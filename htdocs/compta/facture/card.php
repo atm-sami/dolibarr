@@ -4168,7 +4168,7 @@ if ($action == 'create') {
 
 	// Ajout de ce dev dans la branch develop (si merge en v19-20)
 	if ($action == 'calculate') {
-		$calculationrule = GETPOST('calculationrule');
+		$calculationrule = GETPOST('calculationrule', 'alpha');
 
 		$object->fetch($id);
 		$object->fetch_thirdparty();
@@ -4658,7 +4658,7 @@ if ($action == 'create') {
 	// Vat
 	// Ajout de ce dev dans la branch develop (si merge en v19-20)
 	print '<tr><td>'.$langs->trans('AmountVAT').'</td><td colspan="3" class="nowrap amountcard">'.price($sign * $object->total_tva, 1, '', 1, - 1, - 1, $conf->currency).'<div class="inline-block"> &nbsp; &nbsp; &nbsp; &nbsp; ';
-	if (GETPOST('calculationrule')) {
+	if (GETPOST('calculationrule', 'alpha')) {
 		$calculationrule = GETPOST('calculationrule', 'alpha');
 	} else {
 		$calculationrule = (empty($conf->global->MAIN_ROUNDOFTOTAL_NOT_TOTALOFROUND) ? 'totalofround' : 'roundoftotal');

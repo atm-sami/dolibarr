@@ -1,0 +1,7 @@
+# CHANGELOG 14.0 MAINTLOG FOR [DOLIBARR ERP CRM](https://www.dolibarr.org)
+
+
+* 19/09/23 *
+- NEW : Ajout du switch mode TVA pour les factures clients (PR standart vers la branch develop dolibarr)
+- FIX : Bug switch de la TVA pour les factures fournisseurs
+

@@ -2527,6 +2527,7 @@ class Ticket extends CommonObject
 			$object->subject = GETPOST('subject', 'alphanohtml');
 			$object->message = GETPOST("message", "restricthtml");
 			$object->private = GETPOST("private_message", "alpha");
+			$object->sendto = GETPOST('receiver');
 
 			$send_email = GETPOST('send_email', 'int');
 
@@ -2555,7 +2556,7 @@ class Ticket extends CommonObject
 				//var_dump($_SESSION);
 				//var_dump($listofpaths);exit;
 
-				if (!empty($public_area)) {
+				if (true) {
 					/*
 					 * Message created from the Public interface
 					 *
@@ -2563,8 +2564,6 @@ class Ticket extends CommonObject
 					 */
 					if (!empty($conf->global->TICKET_PUBLIC_NOTIFICATION_NEW_MESSAGE_ENABLED)) {
 						// Retrieve internal contact datas
-						$internal_contacts = $object->getInfosTicketInternalContact(1);
-
 						$assigned_user_dont_have_email = '';
 
 						$sendto = array();
@@ -2580,18 +2579,11 @@ class Ticket extends CommonObject
 						}
 
 						// Build array to display recipient list
-						foreach ($internal_contacts as $key => $info_sendto) {
-							// Avoid duplicate notifications
-							if ($info_sendto['id'] == $user->id) {
-								continue;
-							}
-
-							if ($info_sendto['email'] != '') {
-								if (!empty($info_sendto['email'])) {
-									$sendto[] = dolGetFirstLastname($info_sendto['firstname'], $info_sendto['lastname'])." <".$info_sendto['email'].">";
-								}
-							}
+						foreach ($object->sendto as $key => $info_sendto) {
+							$sendto[] = strstr($info_sendto, '>', true);
 						}
+						var_dump($sendto);exit();
+
 
 						if (empty($sendto)) {
 							if (!empty($conf->global->TICKET_PUBLIC_NOTIFICATION_NEW_MESSAGE_DEFAULT_EMAIL)) {

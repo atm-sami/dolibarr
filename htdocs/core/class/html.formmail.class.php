@@ -1060,30 +1060,7 @@ class FormMail extends Form
 			$out .= $langs->trans("MailTo");
 		}
 		$out .= '</td><td>';
-		if ($this->withtoreadonly) {
-			if (!empty($this->toname) && !empty($this->tomail)) {
-				$out .= '<input type="hidden" id="toname" name="toname" value="'.$this->toname.'" />';
-				$out .= '<input type="hidden" id="tomail" name="tomail" value="'.$this->tomail.'" />';
-				if ($this->totype == 'thirdparty') {
-					$soc = new Societe($this->db);
-					$soc->fetch($this->toid);
-					$out .= $soc->getNomUrl(1);
-				} elseif ($this->totype == 'contact') {
-					$contact = new Contact($this->db);
-					$contact->fetch($this->toid);
-					$out .= $contact->getNomUrl(1);
-				} else {
-					$out .= $this->toname;
-				}
-				$out .= ' &lt;'.$this->tomail.'&gt;';
-				if ($this->withtofree) {
-					$out .= '<br>'.$langs->trans("and").' <input class="minwidth200" id="sendto" name="sendto" value="'.(!is_array($this->withto) && !is_numeric($this->withto) ? (GETPOSTISSET("sendto") ? GETPOST("sendto") : $this->withto) : "").'" />';
-				}
-			} else {
-				// Note withto may be a text like 'AllRecipientSelected'
-				$out .= (!is_array($this->withto) && !is_numeric($this->withto)) ? $this->withto : "";
-			}
-		} else {
+
 			// The free input of email
 			if (!empty($this->withtofree)) {
 				$out .= '<input class="minwidth200" id="sendto" name="sendto" value="'.(($this->withtofree && !is_numeric($this->withtofree)) ? $this->withtofree : (!is_array($this->withto) && !is_numeric($this->withto) ? (GETPOSTISSET("sendto") ? GETPOST("sendto") : $this->withto) : "")).'" />';
@@ -1106,10 +1083,9 @@ class FormMail extends Form
 						$withtoselected = array_keys($tmparray);
 					}
 				}
-
 				$out .= $form->multiselectarray("receiver", $tmparray, $withtoselected, null, null, 'inline-block minwidth500', null, "");
 			}
-		}
+
 		$out .= "</td></tr>\n";
 		return $out;
 	}

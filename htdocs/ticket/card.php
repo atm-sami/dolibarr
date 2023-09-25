@@ -1540,6 +1540,8 @@ if ($action == 'create' || $action == 'presend') {
 			$formticket->substit = $substitutionarray;
 			$formticket->backtopage = $backtopage;
 
+			$formticket->withtofree = 1;
+
 			$formticket->showMessageForm('100%');
 			print '</div>';
 		}

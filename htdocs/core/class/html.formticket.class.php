@@ -1501,7 +1501,8 @@ class FormTicket
 				// Retrieve email of all contacts (internal and external)
 				$contacts = $ticketstat->getInfosTicketInternalContact(1);
 				$contacts = array_merge($contacts, $ticketstat->getInfosTicketExternalContact(1));
-
+//				var_dump('<pre>');
+//				var_dump($contacts);
 				$sendto = array();
 
 				// Build array to display recipient list
@@ -1532,8 +1533,21 @@ class FormTicket
 
 				// Print recipient list
 				if (is_array($sendto) && count($sendto) > 0) {
-					print img_picto('', 'email', 'class="pictofixedwidth"');
-					print implode(', ', $sendto);
+					$out = '<input class="minwidth200" id="sendto" name="sendto" value="" />';
+					$out .= " ".$langs->trans("and")."/".$langs->trans("or")." ";
+
+					$tmparray = $sendto;
+					foreach ($tmparray as $key => $val) {
+						$tmparray[$key] = dol_htmlentities($tmparray[$key], ENT_QUOTES|ENT_SUBSTITUTE, 'UTF-8', true);
+					}
+					$withtoselected = array_keys($tmparray);
+
+					$out .= $form->multiselectarray("receiver", $tmparray, $withtoselected, null, 1, 'inline-block minwidth500', null, "");
+
+					$out .= "</td>";
+
+					print $out;
+
 				} else {
 					print '<div class="warning">'.$langs->trans('WarningNoEMailsAdded').' '.$langs->trans('TicketGoIntoContactTab').'</div>';
 				}

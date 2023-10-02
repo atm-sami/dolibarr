@@ -60,6 +60,7 @@ $collapse = GETPOST('collapse', 'aZ09comma');
 // Initialize technical objects
 $object = new Mo($db);
 $extrafields = new ExtraFields($db);
+$objectline = new MoLine($db);
 $diroutputmassaction = $conf->mrp->dir_output.'/temp/massgeneration/'.$user->id;
 
 $hookmanager->initHooks(array('mocard', 'globalcard')); // Note that conf->hooks_modules contains array
@@ -159,6 +160,7 @@ if (empty($reshook)) {
 
 	if (($action == 'confirm_addconsumeline' && GETPOST('addconsumelinebutton') && $permissiontoadd)
 	|| ($action == 'confirm_addproduceline' && GETPOST('addproducelinebutton') && $permissiontoadd)) {
+		$predef = '';
 		$moline = new MoLine($db);
 
 		// Line to produce
@@ -182,6 +184,18 @@ if (empty($reshook)) {
 			}
 			$moline->disable_stock_change = ($tmpproduct->type == Product::TYPE_SERVICE ? 1 : 0);
 		}
+
+		// Extrafields
+		$extralabelsline = $extrafields->fetch_name_optionals_label($object->table_element_line);
+		$array_options = $extrafields->getOptionalsFromPost($object->table_element_line, $predef);
+		// Unset extrafield
+		if (is_array($extralabelsline)) {
+			// Get extra fields
+			foreach ($extralabelsline as $key => $value) {
+				unset($_POST["options_".$key]);
+			}
+		}
+		if (is_array($array_options) && count($array_options) > 0) $moline->array_options = $array_options;
 
 		$resultline = $moline->create($user, false); // Never use triggers here
 		if ($resultline <= 0) {
@@ -844,6 +858,17 @@ if ($object->id > 0 && (empty($action) || ($action != 'edit' && $action != 'crea
 			// SplitAll
 			print '<td></td>';
 			print '</tr>';
+
+			// Extrafields Line
+			if (is_object($objectline)) {
+				$extrafields->fetch_name_optionals_label($object->table_element_line);
+				$temps = $objectline->showOptionals($extrafields, 'edit', array(), '', '', 1, 'line');
+				if (!empty($temps)){
+					print '<tr class="liste_titre"><td style="padding-top: 20px" colspan="9" id="extrafield_lines_area_edit" name="extrafield_lines_area_edit">';
+					print $temps;
+					print '</td></tr>';
+				}
+			}
 		}
 
 		// Lines to consume
@@ -901,6 +926,16 @@ if ($object->id > 0 && (empty($action) || ($action != 'edit' && $action != 'crea
 					print '<td>'.$tmpproduct->getNomUrl(1);
 					print '<br><div class="opacitymedium small tdoverflowmax150" title="'.dol_escape_htmltag($tmpproduct->label).'">'.$tmpproduct->label.'</div>';
 					print '</td>';
+					// Extrafields lines
+					if (!empty($extrafields)) {
+						$line->fetch_optionals();
+						$temps = $line->showOptionals($extrafields, 'view', array(), '', '', 1, 'line');
+						if (!empty($temps)) {
+							print '<td><div style="padding-top: 20px" id="extrafield_lines_area_'.$line->id.'" name="extrafield_lines_area_'.$line->id.'">';
+							print $temps;
+							print '</div></td>';
+						}
+					}
 					// Qty
 					print '<td class="right nowraponall">';
 					$help = ''; $picto = 'help';

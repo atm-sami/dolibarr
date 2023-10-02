@@ -12,7 +12,7 @@
 -- To change type of field: ALTER TABLE llx_table MODIFY COLUMN name varchar(60);
 -- To drop a foreign key:   ALTER TABLE llx_table DROP FOREIGN KEY fk_name;
 -- To create a unique index ALTER TABLE llx_table ADD UNIQUE INDEX uk_table_field (field);
--- To drop an index:        -- VMYSQL4.1 DROP INDEX nomindex on llx_table;
+-- To drop an index:        -- VMYSQL4.1 DROP INDEX nomindex on llx _table;
 -- To drop an index:        -- VPGSQL8.2 DROP INDEX nomindex;
 -- To make pk to be auto increment (mysql):
 -- -- VMYSQL4.3 ALTER TABLE llx_table ADD PRIMARY KEY(rowid);
@@ -120,4 +120,10 @@ ALTER TABLE llx_accounting_account MODIFY COLUMN pcg_type varchar(32);
 -- VPGSQL8.2 DROP INDEX uk_links;
 ALTER TABLE llx_links ADD UNIQUE INDEX uk_links (objectid, objecttype,label);
 
-
+create table llx_mrp_production_extrafields
+(
+    rowid                     integer AUTO_INCREMENT PRIMARY KEY,
+    tms                       timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    fk_object                 integer NOT NULL,
+    import_key                varchar(14)                          		-- import key
+) ENGINE=innodb;

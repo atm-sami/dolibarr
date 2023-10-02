@@ -751,6 +751,8 @@ class Mo extends CommonObject
 								$moline->disable_stock_change = $line->disable_stock_change;
 								if (!empty($line->fk_default_workstation)) $moline->fk_default_workstation = $line->fk_default_workstation;
 
+								var_dump($array_options);exit();
+
 								$resultline = $moline->create($user, false); // Never use triggers here
 								if ($resultline <= 0) {
 									$error++;

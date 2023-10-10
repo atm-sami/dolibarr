@@ -1941,6 +1941,8 @@ if (empty($reshook)) {
 				$object->mode_reglement_id = GETPOST('mode_reglement_id', 'int');
 				$object->remise_absolue =price2num(GETPOST('remise_absolue'), 'MU', 2);
 				$object->remise_percent = price2num(GETPOST('remise_percent'), '', 2);
+				$object->fk_account = GETPOST('fk_account', 'int');
+
 
 				// Proprietes particulieres a facture de remplacement
 
@@ -2161,8 +2163,7 @@ if (empty($reshook)) {
 				$pu_ttc = $datapriceofproduct['pu_ttc'];
 				$price_min = $datapriceofproduct['price_min'];
 				$price_min_ttc = (isset($datapriceofproduct['price_min_ttc'])) ? $datapriceofproduct['price_min_ttc'] : null;
-				$price_base_type = $datapriceofproduct['price_base_type'];
-
+				$price_base_type = empty($datapriceofproduct['price_base_type']) ? 'HT' : $datapriceofproduct['price_base_type'];
 				$tva_tx = $datapriceofproduct['tva_tx'];
 				$tva_npr = $datapriceofproduct['tva_npr'];
 

@@ -1,6 +1,10 @@
 <?php
-/* Copyright (C) 2007-2012 Laurent Destailleur  <eldy@users.sourceforge.net>
- * Copyright (C) 2014      Florian Henry   <florian.henry@open-concept.pro>
+/* Copyright (C) 2001-2007	Rodolphe Quiedeville	<rodolphe@quiedeville.org>
+ * Copyright (C) 2004-2015	Laurent Destailleur		<eldy@users.sourceforge.net>
+ * Copyright (C) 2005		Eric Seigne				<eric.seigne@ryxeo.com>
+ * Copyright (C) 2005-2013	Regis Houssin			<regis.houssin@inodbox.com>
+ * Copyright (C) 2006		Andre Cianfarani		<acianfa@free.fr>
+ * Copyright (C) 2015       Marcos García           <marcosgdf@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,1093 +21,637 @@
  */
 
 /**
- * \file htdocs/product/class/productcustomerprice.class.php
- * \ingroup produit
- * \brief File of class to manage predefined price products or services by customer
+ * \file    htdocs/societe/price.php
+ * \ingroup product
+ * \brief   Page to show product prices by customer
  */
-require_once DOL_DOCUMENT_ROOT.'/core/class/commonobject.class.php';
 
-/**
- * File of class to manage predefined price products or services by customer
- */
-class Productcustomerprice extends CommonObject
-{
-	/**
-	 * @var array  Array with all fields and their property. Do not use it as a static var. It may be modified by constructor.
-	 */
-	public $fields = array(
-		'ref' => array('type'=>'varchar(128)', 'label'=>'Ref', 'enabled'=>1, 'visible'=>4, 'position'=>10, 'notnull'=>1, 'default'=>'(PROV)', 'index'=>1, 'searchall'=>1, 'comment'=>"Reference of object", 'showoncombobox'=>'1', 'noteditable'=>1),
-		'fk_product' => array('type'=>'integer:Product:product/class/product.class.php:0', 'label'=>'Product', 'enabled'=>'$conf->product->enabled', 'visible'=>1, 'position'=>35, 'notnull'=>1, 'index'=>1, 'comment'=>"Product to produce", 'css'=>'maxwidth300', 'csslist'=>'tdoverflowmax100', 'picto'=>'product'),
-		'ref_customer' => array('type'=>'varchar(128)', 'label'=>'RefCustomer', 'enabled'=>1, 'visible'=>4, 'position'=>10, 'notnull'=>1,),
-		'datec' => array('type'=>'datetime', 'label'=>'AppliedPricesFrom', 'enabled'=>1, 'visible'=>1, 'position'=>500, 'notnull'=>1,),
-		'price_base_type' => array('type' => 'varchar(255)', 'label' => 'PriceBase', 'enabled' => 1, 'visible' => 1, 'position' => 11, 'notnull' => -1, 'comment' => 'Price Base Type'),
-		'tva_tx' => array('type' => 'decimal(20,6)', 'label' => 'VAT', 'enabled' => 1, 'visible' => 1, 'position' => 12, 'notnull' => -1, 'comment' => 'TVA Tax Rate'),
-		'price' => array('type' => 'decimal(20,6)', 'label' => 'HT', 'enabled' => 1, 'visible' => 1, 'position' => 8, 'notnull' => -1, 'comment' => 'Price HT'),
-		'price_ttc' => array('type' => 'decimal(20,6)', 'label' => 'TTC', 'enabled' => 1, 'visible' => 1, 'position' => 8, 'notnull' => -1, 'comment' => 'Price TTC'),
-		'price_min' => array('type' => 'decimal(20,6)', 'label' => 'MinPriceHT', 'enabled' => 1, 'visible' => 1, 'position' => 9, 'notnull' => -1, 'comment' => 'Minimum Price'),
-		'price_min_ttc' => array('type' => 'decimal(20,6)', 'label' => 'MinPriceTTC', 'enabled' => 1, 'visible' => 1, 'position' => 10, 'notnull' => -1, 'comment' => 'Minimum Price TTC'),
-		'fk_user' => array('type'=>'integer:User:user/class/user.class.php', 'label'=>'UserModif', 'enabled'=>1, 'visible'=>1, 'position'=>510, 'notnull'=>1, 'foreignkey'=>'user.rowid', 'csslist'=>'tdoverflowmax100'),
-	);
 
-	/**
-	 * @var string ID to identify managed object
-	 */
-	public $element = 'product_customer_price';
+// Load Dolibarr environment
+require '../main.inc.php';
+require_once DOL_DOCUMENT_ROOT.'/core/lib/product.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/product/class/product.class.php';
+require_once DOL_DOCUMENT_ROOT.'/core/lib/company.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/societe/class/societe.class.php';
 
-	/**
-	 * @var string Name of table without prefix where object is stored
-	 */
-	public $table_element = 'product_customer_price';
+if (!empty($conf->global->PRODUIT_CUSTOMER_PRICES)) {
+    require_once DOL_DOCUMENT_ROOT.'/product/class/productcustomerprice.class.php';
 
-	/**
-	 * @var int Entity
-	 */
-	public $entity;
-
-	public $datec = '';
-	public $tms = '';
-
-	/**
-	 * @var int ID
-	 */
-	public $fk_product;
-
-	/**
-	 * @var int Thirdparty ID
-	 */
-	public $fk_soc;
-
-	/**
-	 * @var string Customer reference
-	 */
-	public $ref_customer;
-
-	public $price;
-	public $price_ttc;
-	public $price_min;
-	public $price_min_ttc;
-	public $price_base_type;
-	public $tva_tx;
-	public $recuperableonly;
-	public $localtax1_type;
-	public $localtax1_tx;
-	public $localtax2_type;
-	public $localtax2_tx;
-
-	/**
-	 * @var int User ID
-	 */
-	public $fk_user;
-
-	public $lines = array();
-
-
-	/**
-	 * Constructor
-	 *
-	 * @param DoliDb $db handler
-	 */
-	public function __construct($db)
-	{
-		$this->db = $db;
-	}
-
-	/**
-	 * Create object into database
-	 *
-	 * @param User $user that creates
-	 * @param int $notrigger triggers after, 1=disable triggers
-	 * @param int $forceupdateaffiliate update price on each soc child
-	 * @return int <0 if KO, Id of created object if OK
-	 */
-	public function create($user, $notrigger = 0, $forceupdateaffiliate = 0)
-	{
-
-		global $conf, $langs;
-		$error = 0;
-
-		// Clean parameters
-
-		if (isset($this->entity)) {
-			$this->entity = trim($this->entity);
-		}
-		if (isset($this->fk_product)) {
-			$this->fk_product = trim($this->fk_product);
-		}
-		if (isset($this->fk_soc)) {
-			$this->fk_soc = trim($this->fk_soc);
-		}
-		if (isset($this->ref_customer)) {
-			$this->ref_customer = trim($this->ref_customer);
-		}
-		if (isset($this->price)) {
-			$this->price = trim($this->price);
-		}
-		if (isset($this->price_ttc)) {
-			$this->price_ttc = trim($this->price_ttc);
-		}
-		if (isset($this->price_min)) {
-			$this->price_min = trim($this->price_min);
-		}
-		if (isset($this->price_min_ttc)) {
-			$this->price_min_ttc = trim($this->price_min_ttc);
-		}
-		if (isset($this->price_base_type)) {
-			$this->price_base_type = trim($this->price_base_type);
-		}
-		if (isset($this->tva_tx)) {
-			$this->tva_tx = (float) $this->tva_tx;
-		}
-		if (isset($this->recuperableonly)) {
-			$this->recuperableonly = trim($this->recuperableonly);
-		}
-		if (isset($this->localtax1_tx)) {
-			$this->localtax1_tx = trim($this->localtax1_tx);
-		}
-		if (isset($this->localtax2_tx)) {
-			$this->localtax2_tx = trim($this->localtax2_tx);
-		}
-		if (isset($this->fk_user)) {
-			$this->fk_user = trim($this->fk_user);
-		}
-		if (isset($this->import_key)) {
-			$this->import_key = trim($this->import_key);
-		}
-
-			// Check parameters
-			// Put here code to add control on parameters values
-
-		if ($this->price != '' || $this->price == 0) {
-			if ($this->price_base_type == 'TTC') {
-				$this->price_ttc = price2num($this->price, 'MU');
-				$this->price = price2num($this->price) / (1 + ($this->tva_tx / 100));
-				$this->price = price2num($this->price, 'MU');
-
-				if ($this->price_min != '' || $this->price_min == 0) {
-					$this->price_min_ttc = price2num($this->price_min, 'MU');
-					$this->price_min = price2num($this->price_min) / (1 + ($this->tva_tx / 100));
-					$this->price_min = price2num($this->price_min, 'MU');
-				} else {
-					$this->price_min = 0;
-					$this->price_min_ttc = 0;
-				}
-			} else {
-				$this->price = price2num($this->price, 'MU');
-				$this->price_ttc = ($this->recuperableonly != 1) ? price2num($this->price) * (1 + ($this->tva_tx / 100)) : $this->price;
-				$this->price_ttc = price2num($this->price_ttc, 'MU');
-
-				if ($this->price_min != '' || $this->price_min == 0) {
-					$this->price_min = price2num($this->price_min, 'MU');
-					$this->price_min_ttc = price2num($this->price_min) * (1 + ($this->tva_tx / 100));
-					$this->price_min_ttc = price2num($this->price_min_ttc, 'MU');
-					// print 'X'.$newminprice.'-'.$price_min;
-				} else {
-					$this->price_min = 0;
-					$this->price_min_ttc = 0;
-				}
-			}
-		}
-
-		// Insert request
-		$sql = "INSERT INTO ".$this->db->prefix()."product_customer_price(";
-		$sql .= "entity,";
-		$sql .= "datec,";
-		$sql .= "fk_product,";
-		$sql .= "fk_soc,";
-		$sql .= 'ref_customer,';
-		$sql .= "price,";
-		$sql .= "price_ttc,";
-		$sql .= "price_min,";
-		$sql .= "price_min_ttc,";
-		$sql .= "price_base_type,";
-		$sql .= "default_vat_code,";
-		$sql .= "tva_tx,";
-		$sql .= "recuperableonly,";
-		$sql .= "localtax1_type,";
-		$sql .= "localtax1_tx,";
-		$sql .= "localtax2_type,";
-		$sql .= "localtax2_tx,";
-		$sql .= "fk_user,";
-		$sql .= "import_key";
-		$sql .= ") VALUES (";
-		$sql .= " ".((int) $conf->entity).",";
-		$sql .= " '".$this->db->idate(dol_now())."',";
-		$sql .= " ".(!isset($this->fk_product) ? 'NULL' : "'".$this->db->escape($this->fk_product)."'").",";
-		$sql .= " ".(!isset($this->fk_soc) ? 'NULL' : "'".$this->db->escape($this->fk_soc)."'").",";
-		$sql .= " ".(!isset($this->ref_customer) ? 'NULL' : "'".$this->db->escape($this->ref_customer)."'").",";
-		$sql .= " ".(empty($this->price) ? '0' : "'".$this->db->escape($this->price)."'").",";
-		$sql .= " ".(empty($this->price_ttc) ? '0' : "'".$this->db->escape($this->price_ttc)."'").",";
-		$sql .= " ".(empty($this->price_min) ? '0' : "'".$this->db->escape($this->price_min)."'").",";
-		$sql .= " ".(empty($this->price_min_ttc) ? '0' : "'".$this->db->escape($this->price_min_ttc)."'").",";
-		$sql .= " ".(!isset($this->price_base_type) ? 'NULL' : "'".$this->db->escape($this->price_base_type)."'").",";
-		$sql .= " ".($this->default_vat_code ? "'".$this->db->escape($this->default_vat_code)."'" : "null").",";
-		$sql .= " ".(!isset($this->tva_tx) ? 'NULL' : (empty($this->tva_tx) ? 0 : $this->tva_tx)).",";
-		$sql .= " ".(!isset($this->recuperableonly) ? 'NULL' : "'".$this->db->escape($this->recuperableonly)."'").",";
-		$sql .= " ".(empty($this->localtax1_type) ? "'0'" : "'".$this->db->escape($this->localtax1_type)."'").",";
-		$sql .= " ".(!isset($this->localtax1_tx) ? 'NULL' : (empty($this->localtax1_tx) ? 0 : $this->localtax1_tx)).",";
-		$sql .= " ".(empty($this->localtax2_type) ? "'0'" : "'".$this->db->escape($this->localtax2_type)."'").",";
-		$sql .= " ".(!isset($this->localtax2_tx) ? 'NULL' : (empty($this->localtax2_tx) ? 0 : $this->localtax2_tx)).",";
-		$sql .= " ".((int) $user->id).",";
-		$sql .= " ".(!isset($this->import_key) ? 'NULL' : "'".$this->db->escape($this->import_key)."'")."";
-		$sql .= ")";
-
-		$this->db->begin();
-
-		dol_syslog(get_class($this)."::create", LOG_DEBUG);
-		$resql = $this->db->query($sql);
-		if (!$resql) {
-			$error++;
-			$this->errors [] = "Error ".$this->db->lasterror();
-		}
-
-		if (!$error) {
-			$this->id = $this->db->last_insert_id($this->db->prefix()."product_customer_price");
-
-			if (!$notrigger) {
-				$result = $this->call_trigger('PRODUCT_CUSTOMER_PRICE_CREATE', $user);
-				if ($result < 0) {
-					$error++;
-				}
-			}
-		}
-
-		if (!$error) {
-			$result = $this->setPriceOnAffiliateThirdparty($user, $forceupdateaffiliate);
-			if ($result < 0) {
-				$error++;
-			}
-		}
-
-		// Commit or rollback
-		if ($error) {
-			foreach ($this->errors as $errmsg) {
-				dol_syslog(get_class($this)."::create ".$errmsg, LOG_ERR);
-				$this->error .= ($this->error ? ', '.$errmsg : $errmsg);
-			}
-			$this->db->rollback();
-			return -1 * $error;
-		} else {
-			$this->db->commit();
-			return $this->id;
-		}
-	}
-
-	/**
-	 * Load object in memory from the database
-	 *
-	 * @param 	int 	$id 	ID of customer price
-	 * @return 	int 			<0 if KO, 0 if not found, >0 if OK
-	 */
-	public function fetch($id)
-	{
-		global $langs;
-
-		$sql = "SELECT";
-		$sql .= " t.rowid,";
-		$sql .= " t.entity,";
-		$sql .= " t.datec,";
-		$sql .= " t.tms,";
-		$sql .= " t.fk_product,";
-		$sql .= " t.fk_soc,";
-		$sql .= " t.ref_customer,";
-		$sql .= " t.price,";
-		$sql .= " t.price_ttc,";
-		$sql .= " t.price_min,";
-		$sql .= " t.price_min_ttc,";
-		$sql .= " t.price_base_type,";
-		$sql .= " t.default_vat_code,";
-		$sql .= " t.tva_tx,";
-		$sql .= " t.recuperableonly,";
-		$sql .= " t.localtax1_tx,";
-		$sql .= " t.localtax2_tx,";
-		$sql .= " t.fk_user,";
-		$sql .= " t.import_key";
-		$sql .= " FROM ".$this->db->prefix()."product_customer_price as t";
-		$sql .= " WHERE t.rowid = ".((int) $id);
-
-		dol_syslog(get_class($this)."::fetch", LOG_DEBUG);
-		$resql = $this->db->query($sql);
-		if ($resql) {
-			if ($this->db->num_rows($resql)) {
-				$obj = $this->db->fetch_object($resql);
-
-				$this->id = $obj->rowid;
-
-				$this->entity = $obj->entity;
-				$this->datec = $this->db->jdate($obj->datec);
-				$this->tms = $this->db->jdate($obj->tms);
-				$this->fk_product = $obj->fk_product;
-				$this->fk_soc = $obj->fk_soc;
-				$this->ref_customer = $obj->ref_customer;
-				$this->price = $obj->price;
-				$this->price_ttc = $obj->price_ttc;
-				$this->price_min = $obj->price_min;
-				$this->price_min_ttc = $obj->price_min_ttc;
-				$this->price_base_type = $obj->price_base_type;
-				$this->default_vat_code = $obj->default_vat_code;
-				$this->tva_tx = $obj->tva_tx;
-				$this->recuperableonly = $obj->recuperableonly;
-				$this->localtax1_tx = $obj->localtax1_tx;
-				$this->localtax2_tx = $obj->localtax2_tx;
-				$this->fk_user = $obj->fk_user;
-				$this->import_key = $obj->import_key;
-
-				$this->db->free($resql);
-
-				return 1;
-			} else {
-				$this->db->free($resql);
-
-				return 0;
-			}
-		} else {
-			$this->error = "Error ".$this->db->lasterror();
-			return -1;
-		}
-	}
-
-	// phpcs:disable PEAR.NamingConventions.ValidFunctionName.ScopeNotCamelCaps
-	/**
-	 * Load all customer prices in memory from database
-	 *
-	 * @param 	string 	$sortorder 	order
-	 * @param 	string 	$sortfield 	field
-	 * @param 	int 	$limit 		page
-	 * @param 	int 	$offset 	offset
-	 * @param 	array 	$filter 	Filter for select
-	 * @deprecated since dolibarr v17 use fetchAll
-	 * @return 	int 				<0 if KO, >0 if OK
-	 */
-	public function fetch_all($sortorder = '', $sortfield = '', $limit = 0, $offset = 0, $filter = array())
-	{
-		// phpcs:enable
-
-		dol_syslog(get_class($this)."::fetch_all is deprecated, use fetchAll instead", LOG_NOTICE);
-
-		return $this->fetchAll($sortorder, $sortfield, $limit, $offset, $filter);
-	}
-
-	/**
-	 * Load all customer prices in memory from database
-	 *
-	 * @param 	string 	$sortorder 	order
-	 * @param 	string 	$sortfield 	field
-	 * @param 	int 	$limit 		page
-	 * @param 	int 	$offset 	offset
-	 * @param 	array 	$filter 	Filter for select
-	 * @return 	int 				<0 if KO, >0 if OK
-	 * @since dolibarr v17
-	 */
-	public function fetchAll($sortorder = '', $sortfield = '', $limit = 0, $offset = 0, $filter = array())
-	{
-		global $langs;
-
-		if (empty($sortfield)) {
-			$sortfield = "t.rowid";
-		}
-		if (empty($sortorder)) {
-			$sortorder = "DESC";
-		}
-
-		$sql = "SELECT";
-		$sql .= " t.rowid,";
-		$sql .= " t.entity,";
-		$sql .= " t.datec,";
-		$sql .= " t.tms,";
-		$sql .= " t.fk_product,";
-		$sql .= " t.fk_soc,";
-		$sql .= " t.ref_customer,";
-		$sql .= " t.price,";
-		$sql .= " t.price_ttc,";
-		$sql .= " t.price_min,";
-		$sql .= " t.price_min_ttc,";
-		$sql .= " t.price_base_type,";
-		$sql .= " t.default_vat_code,";
-		$sql .= " t.tva_tx,";
-		$sql .= " t.recuperableonly,";
-		$sql .= " t.localtax1_tx,";
-		$sql .= " t.localtax2_tx,";
-		$sql .= " t.localtax1_type,";
-		$sql .= " t.localtax2_type,";
-		$sql .= " t.fk_user,";
-		$sql .= " t.import_key,";
-		$sql .= " soc.nom as socname,";
-		$sql .= " prod.ref as prodref";
-		$sql .= " FROM ".$this->db->prefix()."product_customer_price as t,";
-		$sql .= " ".$this->db->prefix()."product as prod,";
-		$sql .= " ".$this->db->prefix()."societe as soc";
-		$sql .= " WHERE soc.rowid=t.fk_soc ";
-		$sql .= " AND prod.rowid=t.fk_product ";
-		$sql .= " AND prod.entity IN (".getEntity('product').")";
-		$sql .= " AND t.entity IN (".getEntity('productprice').")";
-
-		// Manage filter
-		if (count($filter) > 0) {
-			foreach ($filter as $key => $value) {
-				if (strpos($key, 'date')) {				// To allow $filter['YEAR(s.dated)']=>$year
-					$sql .= " AND ".$key." = '".$this->db->escape($value)."'";
-				} elseif ($key == 'soc.nom') {
-					$sql .= " AND ".$key." LIKE '%".$this->db->escape($value)."%'";
-				} elseif ($key == 'prod.ref' || $key == 'prod.label') {
-					$sql .= " AND ".$key." LIKE '%".$this->db->escape($value)."%'";
-				} elseif ($key == 't.price' || $key == 't.price_ttc') {
-					$sql .= " AND ".$key." LIKE '%".price2num($value)."%'";
-				} else {
-					$sql .= " AND ".$key." = ".((int) $value);
-				}
-			}
-		}
-		$sql .= $this->db->order($sortfield, $sortorder);
-		if (!empty($limit)) {
-			$sql .= $this->db->plimit($limit + 1, $offset);
-		}
-
-		dol_syslog(get_class($this)."::fetchAll", LOG_DEBUG);
-		$resql = $this->db->query($sql);
-		if ($resql) {
-			$this->lines = array();
-			$num = $this->db->num_rows($resql);
-
-			while ($obj = $this->db->fetch_object($resql)) {
-				$line = new PriceByCustomerLine();
-
-				$line->id = $obj->rowid;
-
-				$line->entity = $obj->entity;
-				$line->datec = $this->db->jdate($obj->datec);
-				$line->tms = $this->db->jdate($obj->tms);
-				$line->fk_product = $obj->fk_product;
-				$line->fk_soc = $obj->fk_soc;
-				$line->ref_customer = $obj->ref_customer;
-				$line->price = $obj->price;
-				$line->price_ttc = $obj->price_ttc;
-				$line->price_min = $obj->price_min;
-				$line->price_min_ttc = $obj->price_min_ttc;
-				$line->price_base_type = $obj->price_base_type;
-				$line->default_vat_code = $obj->default_vat_code;
-				$line->tva_tx = $obj->tva_tx;
-				$line->recuperableonly = $obj->recuperableonly;
-				$line->localtax1_tx = $obj->localtax1_tx;
-				$line->localtax2_tx = $obj->localtax2_tx;
-				$line->localtax1_type = $obj->localtax1_type;
-				$line->localtax2_type = $obj->localtax2_type;
-				$line->fk_user = $obj->fk_user;
-				$line->import_key = $obj->import_key;
-				$line->socname = $obj->socname;
-				$line->prodref = $obj->prodref;
-
-				$this->lines[] = $line;
-			}
-			$this->db->free($resql);
-
-			return $num;
-		} else {
-			$this->error = "Error ".$this->db->lasterror();
-			return -1;
-		}
-	}
-
-	// phpcs:disable PEAR.NamingConventions.ValidFunctionName.ScopeNotCamelCaps
-	/**
-	 * Load all objects in memory from database
-	 *
-	 * @param 	string 	$sortorder 	order
-	 * @param 	string 	$sortfield 	field
-	 * @param 	int 	$limit 		page
-	 * @param 	int 	$offset 	offset
-	 * @param 	array 	$filter 	Filter for sql request
-	 * @return 	int 			<0 if KO, >0 if OK
-	 */
-	public function fetch_all_log($sortorder, $sortfield, $limit, $offset, $filter = array())
-	{
-		// phpcs:enable
-		global $langs;
-
-		if (!empty($sortfield)) {
-			$sortfield = "t.rowid";
-		}
-		if (!empty($sortorder)) {
-			$sortorder = "DESC";
-		}
-
-		$sql = "SELECT";
-		$sql .= " t.rowid,";
-		$sql .= " t.entity,";
-		$sql .= " t.datec,";
-		$sql .= " t.fk_product,";
-		$sql .= " t.fk_soc,";
-		$sql .= " t.ref_customer,";
-		$sql .= " t.price,";
-		$sql .= " t.price_ttc,";
-		$sql .= " t.price_min,";
-		$sql .= " t.price_min_ttc,";
-		$sql .= " t.price_base_type,";
-		$sql .= " t.default_vat_code,";
-		$sql .= " t.tva_tx,";
-		$sql .= " t.recuperableonly,";
-		$sql .= " t.localtax1_tx,";
-		$sql .= " t.localtax2_tx,";
-		$sql .= " t.fk_user,";
-		$sql .= " t.import_key,";
-		$sql .= " soc.nom as socname,";
-		$sql .= " prod.ref as prodref";
-		$sql .= " FROM ".$this->db->prefix()."product_customer_price_log as t";
-		$sql .= " ,".$this->db->prefix()."product as prod";
-		$sql .= " ,".$this->db->prefix()."societe as soc";
-		$sql .= " WHERE soc.rowid=t.fk_soc";
-		$sql .= " AND prod.rowid=t.fk_product ";
-		$sql .= " AND prod.entity IN (".getEntity('product').")";
-		$sql .= " AND t.entity IN (".getEntity('productprice').")";
-		// Manage filter
-		if (count($filter) > 0) {
-			foreach ($filter as $key => $value) {
-				if (strpos($key, 'date')) { 				// To allow $filter['YEAR(s.dated)']=>$year
-					$sql .= " AND ".$key." = '".$this->db->escape($value)."'";
-				} elseif ($key == 'soc.nom') {
-					$sql .= " AND ".$key." LIKE '%".$this->db->escape($value)."%'";
-				} else {
-					$sql .= " AND ".$key." = ".((int) $value);
-				}
-			}
-		}
-		$sql .= $this->db->order($sortfield, $sortorder);
-		if (!empty($limit)) {
-			$sql .= $this->db->plimit($limit + 1, $offset);
-		}
-
-		dol_syslog(get_class($this)."::fetch_all_log", LOG_DEBUG);
-		$resql = $this->db->query($sql);
-		if ($resql) {
-			$this->lines = array();
-			$num = $this->db->num_rows($resql);
-
-			while ($obj = $this->db->fetch_object($resql)) {
-				$line = new PriceByCustomerLine();
-
-				$line->id = $obj->rowid;
-
-				$line->entity = $obj->entity;
-				$line->datec = $this->db->jdate($obj->datec);
-				$line->tms = $this->db->jdate($obj->tms);
-				$line->fk_product = $obj->fk_product;
-				$line->fk_soc = $obj->fk_soc;
-				$line->ref_customer = $obj->ref_customer;
-				$line->price = $obj->price;
-				$line->price_ttc = $obj->price_ttc;
-				$line->price_min = $obj->price_min;
-				$line->price_min_ttc = $obj->price_min_ttc;
-				$line->price_base_type = $obj->price_base_type;
-				$line->default_vat_code = $obj->default_vat_code;
-				$line->tva_tx = $obj->tva_tx;
-				$line->recuperableonly = $obj->recuperableonly;
-				$line->localtax1_tx = $obj->localtax1_tx;
-				$line->localtax2_tx = $obj->localtax2_tx;
-				$line->fk_user = $obj->fk_user;
-				$line->import_key = $obj->import_key;
-				$line->socname = $obj->socname;
-				$line->prodref = $obj->prodref;
-
-				$this->lines [] = $line;
-			}
-			$this->db->free($resql);
-
-			return $num;
-		} else {
-			$this->error = "Error ".$this->db->lasterror();
-			return -1;
-		}
-	}
-
-	/**
-	 * Update object into database
-	 *
-	 * @param User $user that modifies
-	 * @param int $notrigger triggers after, 1=disable triggers
-	 * @param int $forceupdateaffiliate update price on each soc child
-	 * @return int <0 if KO, >0 if OK
-	 */
-	public function update($user = 0, $notrigger = 0, $forceupdateaffiliate = 0)
-	{
-
-		global $conf, $langs;
-		$error = 0;
-
-		// Clean parameters
-
-		if (isset($this->entity)) {
-			$this->entity = trim($this->entity);
-		}
-		if (isset($this->fk_product)) {
-			$this->fk_product = trim($this->fk_product);
-		}
-		if (isset($this->fk_soc)) {
-			$this->fk_soc = trim($this->fk_soc);
-		}
-		if (isset($this->ref_customer)) {
-			$this->ref_customer = trim($this->ref_customer);
-		}
-		if (isset($this->price)) {
-			$this->price = trim($this->price);
-		}
-		if (isset($this->price_ttc)) {
-			$this->price_ttc = trim($this->price_ttc);
-		}
-		if (isset($this->price_min)) {
-			$this->price_min = trim($this->price_min);
-		}
-		if (isset($this->price_min_ttc)) {
-			$this->price_min_ttc = trim($this->price_min_ttc);
-		}
-		if (isset($this->price_base_type)) {
-			$this->price_base_type = trim($this->price_base_type);
-		}
-		if (isset($this->tva_tx)) {
-			$this->tva_tx = (float) $this->tva_tx;
-		}
-		if (isset($this->recuperableonly)) {
-			$this->recuperableonly = trim($this->recuperableonly);
-		}
-		if (isset($this->localtax1_tx)) {
-			$this->localtax1_tx = trim($this->localtax1_tx);
-		}
-		if (isset($this->localtax2_tx)) {
-			$this->localtax2_tx = trim($this->localtax2_tx);
-		}
-		if (isset($this->fk_user)) {
-			$this->fk_user = trim($this->fk_user);
-		}
-		if (isset($this->import_key)) {
-			$this->import_key = trim($this->import_key);
-		}
-
-			// Check parameters
-			// Put here code to add a control on parameters values
-
-		if ($this->price != '' || $this->price == 0) {
-			if ($this->price_base_type == 'TTC') {
-				$this->price_ttc = price2num($this->price, 'MU');
-				$this->price = price2num($this->price) / (1 + ($this->tva_tx / 100));
-				$this->price = price2num($this->price, 'MU');
-
-				if ($this->price_min != '' || $this->price_min == 0) {
-					$this->price_min_ttc = price2num($this->price_min, 'MU');
-					$this->price_min = price2num($this->price_min) / (1 + ($this->tva_tx / 100));
-					$this->price_min = price2num($this->price_min, 'MU');
-				} else {
-					$this->price_min = 0;
-					$this->price_min_ttc = 0;
-				}
-			} else {
-				$this->price = price2num($this->price, 'MU');
-				$this->price_ttc = ($this->recuperableonly != 1) ? price2num($this->price) * (1 + ($this->tva_tx / 100)) : $this->price;
-				$this->price_ttc = price2num($this->price_ttc, 'MU');
-
-				if ($this->price_min != '' || $this->price_min == 0) {
-					$this->price_min = price2num($this->price_min, 'MU');
-					$this->price_min_ttc = price2num($this->price_min) * (1 + ($this->tva_tx / 100));
-					$this->price_min_ttc = price2num($this->price_min_ttc, 'MU');
-					// print 'X'.$newminprice.'-'.$price_min;
-				} else {
-					$this->price_min = 0;
-					$this->price_min_ttc = 0;
-				}
-			}
-		}
-
-		// Do a copy of current record into log table
-		// Insert request
-		$sql = "INSERT INTO ".$this->db->prefix()."product_customer_price_log(";
-
-		$sql .= "entity,";
-		$sql .= "datec,";
-		$sql .= "fk_product,";
-		$sql .= "fk_soc,";
-		$sql .= "ref_customer,";
-		$sql .= "price,";
-		$sql .= "price_ttc,";
-		$sql .= "price_min,";
-		$sql .= "price_min_ttc,";
-		$sql .= "price_base_type,";
-		$sql .= "default_vat_code,";
-		$sql .= "tva_tx,";
-		$sql .= "recuperableonly,";
-		$sql .= "localtax1_tx,";
-		$sql .= "localtax2_tx,";
-		$sql .= "localtax1_type,";
-		$sql .= "localtax2_type,";
-		$sql .= "fk_user,";
-		$sql .= "import_key";
-
-		$sql .= ") 		";
-		$sql .= "SELECT";
-
-		$sql .= " t.entity,";
-		$sql .= " t.datec,";
-		$sql .= " t.fk_product,";
-		$sql .= " t.fk_soc,";
-		$sql .= " t.ref_customer,";
-		$sql .= " t.price,";
-		$sql .= " t.price_ttc,";
-		$sql .= " t.price_min,";
-		$sql .= " t.price_min_ttc,";
-		$sql .= " t.price_base_type,";
-		$sql .= " t.default_vat_code,";
-		$sql .= " t.tva_tx,";
-		$sql .= " t.recuperableonly,";
-		$sql .= " t.localtax1_tx,";
-		$sql .= " t.localtax2_tx,";
-		$sql .= " t.localtax1_type,";
-		$sql .= " t.localtax2_type,";
-		$sql .= " t.fk_user,";
-		$sql .= " t.import_key";
-
-		$sql .= " FROM ".$this->db->prefix()."product_customer_price as t";
-		$sql .= " WHERE t.rowid = ".((int) $this->id);
-
-		$this->db->begin();
-		dol_syslog(get_class($this)."::update", LOG_DEBUG);
-		$resql = $this->db->query($sql);
-		if (!$resql) {
-			$error++;
-			$this->errors [] = "Error ".$this->db->lasterror();
-		}
-
-		// Update request
-		$sql = "UPDATE ".$this->db->prefix()."product_customer_price SET";
-
-		$sql .= " entity=".$conf->entity.",";
-		$sql .= " datec='".$this->db->idate(dol_now())."',";
-		$sql .= " tms=".(dol_strlen($this->tms) != 0 ? "'".$this->db->idate($this->tms)."'" : 'null').",";
-		$sql .= " fk_product=".(isset($this->fk_product) ? $this->fk_product : "null").",";
-		$sql .= " fk_soc=".(isset($this->fk_soc) ? $this->fk_soc : "null").",";
-		$sql .= " ref_customer=".(isset($this->ref_customer) ? "'".$this->db->escape($this->ref_customer)."'" : "null").",";
-		$sql .= " price=".(isset($this->price) ? $this->price : "null").",";
-		$sql .= " price_ttc=".(isset($this->price_ttc) ? $this->price_ttc : "null").",";
-		$sql .= " price_min=".(isset($this->price_min) ? $this->price_min : "null").",";
-		$sql .= " price_min_ttc=".(isset($this->price_min_ttc) ? $this->price_min_ttc : "null").",";
-		$sql .= " price_base_type=".(isset($this->price_base_type) ? "'".$this->db->escape($this->price_base_type)."'" : "null").",";
-		$sql .= " default_vat_code = ".($this->default_vat_code ? "'".$this->db->escape($this->default_vat_code)."'" : "null").",";
-		$sql .= " tva_tx=".(isset($this->tva_tx) ? (empty($this->tva_tx) ? 0 : $this->tva_tx) : "null").",";
-		$sql .= " recuperableonly=".(isset($this->recuperableonly) ? $this->recuperableonly : "null").",";
-		$sql .= " localtax1_tx=".(isset($this->localtax1_tx) ? (empty($this->localtax1_tx) ? 0 : $this->localtax1_tx) : "null").",";
-		$sql .= " localtax2_tx=".(isset($this->localtax2_tx) ? (empty($this->localtax2_tx) ? 0 : $this->localtax2_tx) : "null").",";
-		$sql .= " localtax1_type=".(!empty($this->localtax1_type) ? "'".$this->db->escape($this->localtax1_type)."'" : "'0'").",";
-		$sql .= " localtax2_type=".(!empty($this->localtax2_type) ? "'".$this->db->escape($this->localtax2_type)."'" : "'0'").",";
-		$sql .= " fk_user=".$user->id.",";
-		$sql .= " import_key=".(isset($this->import_key) ? "'".$this->db->escape($this->import_key)."'" : "null")."";
-
-		$sql .= " WHERE rowid=".((int) $this->id);
-
-		dol_syslog(get_class($this)."::update", LOG_DEBUG);
-		$resql = $this->db->query($sql);
-		if (!$resql) {
-			$error++;
-			$this->errors [] = "Error ".$this->db->lasterror();
-		}
-
-		if (!$error && !$notrigger) {
-			// Call trigger
-			$result = $this->call_trigger('PRODUCT_CUSTOMER_PRICE_MODIFY', $user);
-			if ($result < 0) {
-				$error++;
-			}
-			// End call triggers
-		}
-
-		if (!$error) {
-			$result = $this->setPriceOnAffiliateThirdparty($user, $forceupdateaffiliate);
-			if ($result < 0) {
-				$error++;
-			}
-		}
-
-		// Commit or rollback
-		if ($error) {
-			foreach ($this->errors as $errmsg) {
-				dol_syslog(get_class($this)."::update ".$errmsg, LOG_ERR);
-				$this->error .= ($this->error ? ', '.$errmsg : $errmsg);
-			}
-			$this->db->rollback();
-			return -1 * $error;
-		} else {
-			$this->db->commit();
-			return 1;
-		}
-	}
-
-	/**
-	 * Force update price on child companies so child company has same prices than parent.
-	 *
-	 * @param 	User $user 					User that modifies
-	 * @param 	int $forceupdateaffiliate 	update price on each soc child
-	 * @return 	int 						<0 if KO, 0 = action disabled, >0 if OK
-	 */
-	public function setPriceOnAffiliateThirdparty($user, $forceupdateaffiliate)
-	{
-		global $conf;
-
-		if (!empty($conf->global->PRODUCT_DISABLE_PROPAGATE_CUSTOMER_PRICES_ON_CHILD_COMPANIES)) {
-			return 0;
-		}
-
-		$error = 0;
-
-		// Find all susidiaries
-		$sql = "SELECT s.rowid";
-		$sql .= " FROM ".$this->db->prefix()."societe as s";
-		$sql .= " WHERE s.parent = ".((int) $this->fk_soc);
-		$sql .= " AND s.entity IN (".getEntity('societe').")";
-
-		dol_syslog(get_class($this)."::setPriceOnAffiliateThirdparty", LOG_DEBUG);
-		$resql = $this->db->query($sql);
-
-		if ($resql) {
-			$this->lines = array();
-			$num = $this->db->num_rows($resql);
-
-			while (($obj = $this->db->fetch_object($resql)) && (empty($error))) {
-				// find if there is an existing line for the product and the subsidiaries
-				$prodsocprice = new Productcustomerprice($this->db);
-
-				$filter = array(
-					't.fk_product' => $this->fk_product, 't.fk_soc' => $obj->rowid
-				);
-
-				$result = $prodsocprice->fetchAll('', '', 0, 0, $filter);
-				if ($result < 0) {
-					$error++;
-					$this->error = $prodsocprice->error;
-				} else {
-					// There is one line
-					if (count($prodsocprice->lines) > 0) {
-						// If force update => Update
-						if (!empty($forceupdateaffiliate)) {
-							$prodsocpriceupd = new Productcustomerprice($this->db);
-							$prodsocpriceupd->fetch($prodsocprice->lines [0]->id);
-
-							$prodsocpriceupd->price = $this->price;
-							$prodsocpriceupd->price_min = $this->price_min;
-							$prodsocpriceupd->price_base_type = $this->price_base_type;
-							$prodsocpriceupd->tva_tx = $this->tva_tx;
-							$prodsocpriceupd->recuperableonly = $this->recuperableonly;
-
-							$resultupd = $prodsocpriceupd->update($user, 0, $forceupdateaffiliate);
-							if ($result < 0) {
-								$error++;
-								$this->error = $prodsocpriceupd->error;
-							}
-						}
-					} else {
-						// If line do not exits then create it
-						$prodsocpricenew = new Productcustomerprice($this->db);
-						$prodsocpricenew->fk_soc = $obj->rowid;
-						$prodsocpricenew->ref_customer = $obj->ref_customer;
-						$prodsocpricenew->fk_product = $this->fk_product;
-						$prodsocpricenew->price = $this->price;
-						$prodsocpricenew->price_min = $this->price_min;
-						$prodsocpricenew->price_base_type = $this->price_base_type;
-						$prodsocpricenew->tva_tx = $this->tva_tx;
-						$prodsocpricenew->recuperableonly = $this->recuperableonly;
-
-						$resultupd = $prodsocpricenew->create($user, 0, $forceupdateaffiliate);
-						if ($result < 0) {
-							$error++;
-							$this->error = $prodsocpricenew->error;
-						}
-					}
-				}
-			}
-			$this->db->free($resql);
-
-			if (empty($error)) {
-				return 1;
-			} else {
-				return -1;
-			}
-		} else {
-			$this->error = "Error ".$this->db->lasterror();
-			return -1;
-		}
-	}
-
-	/**
-	 * Delete object in database
-	 *
-	 * @param User $user that deletes
-	 * @param int $notrigger triggers after, 1=disable triggers
-	 * @return int <0 if KO, >0 if OK
-	 */
-	public function delete($user, $notrigger = 0)
-	{
-		global $conf, $langs;
-		$error = 0;
-
-		$this->db->begin();
-
-		if (!$error && !$notrigger) {
-			$result = $this->call_trigger('PRODUCT_CUSTOMER_PRICE_DELETE', $user);
-			if ($result < 0) {
-				$error++;
-			}
-		}
-
-		if (!$error) {
-			$sql = "DELETE FROM ".$this->db->prefix()."product_customer_price";
-			$sql .= " WHERE rowid=".((int) $this->id);
-
-			dol_syslog(get_class($this)."::delete", LOG_DEBUG);
-			$resql = $this->db->query($sql);
-			if (!$resql) {
-				$error++;
-				$this->errors [] = "Error ".$this->db->lasterror();
-			}
-		}
-
-		// Commit or rollback
-		if ($error) {
-			foreach ($this->errors as $errmsg) {
-				dol_syslog(get_class($this)."::delete ".$errmsg, LOG_ERR);
-				$this->error .= ($this->error ? ', '.$errmsg : $errmsg);
-			}
-			$this->db->rollback();
-			return -1 * $error;
-		} else {
-			$this->db->commit();
-			return 1;
-		}
-	}
-
-	/**
-	 * Load an object from its id and create a new one in database
-	 *
-	 * @param	User	$user		User making the clone
-	 * @param   int     $fromid     ID of object to clone
-	 * @return  int                 id of clone
-	 */
-	public function createFromClone(User $user, $fromid)
-	{
-		$error = 0;
-
-		$object = new Productcustomerprice($this->db);
-
-		$this->db->begin();
-
-		// Load source object
-		$object->fetch($fromid);
-		$object->id = 0;
-		$object->statut = 0;
-
-		// Clear fields
-		// ...
-
-		// Create clone
-		$object->context['createfromclone'] = 'createfromclone';
-		$result = $object->create($user);
-
-		// Other options
-		if ($result < 0) {
-			$this->error = $object->error;
-			$this->errors = array_merge($this->errors, $object->errors);
-			$error++;
-		}
-
-		if (!$error) {
-		}
-
-		unset($object->context['createfromclone']);
-
-		// End
-		if (!$error) {
-			$this->db->commit();
-			return $object->id;
-		} else {
-			$this->db->rollback();
-			return -1;
-		}
-	}
-
-	/**
-	 * Initialise object with example values
-	 * Id must be 0 if object instance is a specimen
-	 *
-	 * @return void
-	 */
-	public function initAsSpecimen()
-	{
-
-		$this->id = 0;
-
-		$this->entity = '';
-		$this->datec = '';
-		$this->tms = '';
-		$this->fk_product = '';
-		$this->fk_soc = '';
-		$this->ref_customer = '';
-		$this->price = '';
-		$this->price_ttc = '';
-		$this->price_min = '';
-		$this->price_min_ttc = '';
-		$this->price_base_type = '';
-		$this->default_vat_code = '';
-		$this->tva_tx = '';
-		$this->recuperableonly = '';
-		$this->localtax1_tx = '';
-		$this->localtax2_tx = '';
-		$this->fk_user = '';
-		$this->import_key = '';
-	}
+    $prodcustprice = new Productcustomerprice($db);
 }
 
-/**
- * File of class to manage predefined price products or services by customer lines
- */
-class PriceByCustomerLine
-{
-	/**
-	 * @var int ID
-	 */
-	public $id;
 
-	/**
-	 * @var int Entity
-	 */
-	public $entity;
+// Load translation files required by the page
+$langs->loadLangs(array("products", "companies", "bills"));
 
-	public $datec = '';
-	public $tms = '';
 
-	/**
-	 * @var int ID
-	 */
-	public $fk_product;
+// Get parameters
+$action 		= GETPOST('action', 'aZ09');
+$search_prod 	= GETPOST('search_prod', 'alpha');
+$cancel 		= GETPOST('cancel', 'alpha');
+$search_label 	= GETPOST('search_label', 'alpha');
+$search_price 	= GETPOST('search_price');
+$search_price_ttc = GETPOST('search_price_ttc');
 
-	/**
-	 * @var string Customer reference
-	 */
-	public $ref_customer;
-
-	/**
-	 * @var int Thirdparty ID
-	 */
-	public $fk_soc;
-
-	public $price;
-	public $price_ttc;
-	public $price_min;
-	public $price_min_ttc;
-	public $price_base_type;
-	public $default_vat_code;
-	public $tva_tx;
-	public $recuperableonly;
-	public $localtax1_tx;
-	public $localtax2_tx;
-
-	/**
-	 * @var int User ID
-	 */
-	public $fk_user;
-
-	public $import_key;
-	public $socname;
-	public $prodref;
+// Security check
+$socid = GETPOST('socid', 'int') ?GETPOST('socid', 'int') : GETPOST('id', 'int');
+if ($user->socid) {
+    $socid = $user->socid;
 }
+$result = restrictedArea($user, 'societe', $socid, '&societe');
+
+// Initialize objects
+$object = new Societe($db);
+
+// Initialize technical object to manage hooks of page. Note that conf->hooks_modules contains array of hook context
+$hookmanager->initHooks(array('thirdpartycustomerprice', 'globalcard'));
+
+$error = 0;
+
+
+/*
+ * Actions
+ */
+
+$parameters = array('id'=>$socid);
+$reshook = $hookmanager->executeHooks('doActions', $parameters, $object, $action); // Note that $action and $object may have been modified by some hooks
+if ($reshook < 0) {
+    setEventMessages($hookmanager->error, $hookmanager->errors, 'errors');
+}
+
+if (empty($reshook)) {
+    if (GETPOST('button_removefilter_x', 'alpha') || GETPOST('button_removefilter.x', 'alpha') || GETPOST('button_removefilter', 'alpha')) { // Both test are required to be compatible with all browsers
+        $search_prod = $search_label = $search_price = $search_price_ttc = '';
+    }
+
+    if ($action == 'add_customer_price_confirm' && !$cancel && ($user->rights->produit->creer || $user->rights->service->creer)) {
+        if (!(GETPOST('prodid', 'int') > 0)) {
+            $error++;
+            setEventMessages($langs->trans("ErrorFieldRequired", $langs->trans("Product")), null, 'errors');
+            $action = 'add_customer_price';
+        }
+
+        if (!$error) {
+            $update_child_soc = GETPOST('updatechildprice');
+
+            // add price by customer
+            $prodcustprice->fk_soc = $socid;
+            $prodcustprice->ref_customer = GETPOST('ref_customer', 'alpha');
+            $prodcustprice->fk_product = GETPOST('prodid', 'int');
+            $prodcustprice->price = price2num(GETPOST("price"), 'MU');
+            $prodcustprice->price_min = price2num(GETPOST("price_min"), 'MU');
+            $prodcustprice->price_base_type = GETPOST("price_base_type", 'alpha');
+
+            $tva_tx_txt = GETPOST('tva_tx', 'alpha'); // tva_tx can be '8.5'  or  '8.5*'  or  '8.5 (XXX)' or '8.5* (XXX)'
+
+            // We must define tva_tx, npr and local taxes
+            $vatratecode = '';
+            $tva_tx = preg_replace('/[^0-9\.].*$/', '', $tva_tx_txt); // keep remove all after the numbers and dot
+            $npr = preg_match('/\*/', $tva_tx_txt) ? 1 : 0;
+            $localtax1 = 0; $localtax2 = 0; $localtax1_type = '0'; $localtax2_type = '0';
+            // If value contains the unique code of vat line (new recommended method), we use it to find npr and local taxes
+            if (preg_match('/\((.*)\)/', $tva_tx_txt, $reg)) {
+                // We look into database using code (we can't use get_localtax() because it depends on buyer that is not known). Same in update price.
+                $vatratecode = $reg[1];
+                // Get record from code
+                $sql = "SELECT t.rowid, t.code, t.recuperableonly, t.localtax1, t.localtax2, t.localtax1_type, t.localtax2_type";
+                $sql .= " FROM ".MAIN_DB_PREFIX."c_tva as t, ".MAIN_DB_PREFIX."c_country as c";
+                $sql .= " WHERE t.fk_pays = c.rowid AND c.code = '".$db->escape($mysoc->country_code)."'";
+                $sql .= " AND t.taux = ".((float) $tva_tx)." AND t.active = 1";
+                $sql .= " AND t.code ='".$db->escape($vatratecode)."'";
+                $resql = $db->query($sql);
+                if ($resql) {
+                    $obj = $db->fetch_object($resql);
+                    $npr = $obj->recuperableonly;
+                    $localtax1 = $obj->localtax1;
+                    $localtax2 = $obj->localtax2;
+                    $localtax1_type = $obj->localtax1_type;
+                    $localtax2_type = $obj->localtax2_type;
+                }
+            }
+
+            $prodcustprice->default_vat_code = $vatratecode;
+            $prodcustprice->tva_tx = $tva_tx;
+            $prodcustprice->recuperableonly = $npr;
+            $prodcustprice->localtax1_tx = $localtax1;
+            $prodcustprice->localtax2_tx = $localtax2;
+            $prodcustprice->localtax1_type = $localtax1_type;
+            $prodcustprice->localtax2_type = $localtax2_type;
+
+            $result = $prodcustprice->create($user, 0, $update_child_soc);
+
+            if ($result < 0) {
+                setEventMessages($prodcustprice->error, $prodcustprice->errors, 'errors');
+            } else {
+                setEventMessages($langs->trans("Save"), null, 'mesgs');
+            }
+
+            $action = '';
+        }
+    }
+
+    if ($action == 'delete_customer_price' && ($user->rights->produit->creer || $user->rights->service->creer)) {
+        // Delete price by customer
+        $prodcustprice->id = GETPOST('lineid', 'int');
+        $result = $prodcustprice->delete($user);
+
+        if ($result < 0) {
+            setEventMessages($prodcustprice->error, $prodcustprice->errors, 'mesgs');
+        } else {
+            setEventMessages($langs->trans('RecordDeleted'), null, 'errors');
+        }
+        $action = '';
+    }
+
+    if ($action == 'update_customer_price_confirm' && !$cancel && ($user->rights->produit->creer || $user->rights->service->creer)) {
+        $prodcustprice->fetch(GETPOST('lineid', 'int'));
+
+        $update_child_soc = GETPOST('updatechildprice');
+
+        // update price by customer
+        $prodcustprice->ref_customer = GETPOST('ref_customer', 'alpha');
+        $prodcustprice->price = price2num(GETPOST("price"), 'MU');
+        $prodcustprice->price_min = price2num(GETPOST("price_min"), 'MU');
+        $prodcustprice->price_base_type = GETPOST("price_base_type", 'alpha');
+        $prodcustprice->tva_tx = str_replace('*', '', GETPOST("tva_tx"));
+        $prodcustprice->recuperableonly = (preg_match('/\*/', GETPOST("tva_tx")) ? 1 : 0);
+
+        $result = $prodcustprice->update($user, 0, $update_child_soc);
+        if ($result < 0) {
+            setEventMessages($prodcustprice->error, $prodcustprice->errors, 'errors');
+        } else {
+            setEventMessages($langs->trans("Save"), null, 'mesgs');
+        }
+
+        $action = '';
+    }
+}
+
+
+/*
+ * View
+ */
+
+$form = new Form($db);
+
+$object = new Societe($db);
+
+$result = $object->fetch($socid);
+llxHeader("", $langs->trans("ThirdParty").'-'.$langs->trans('PriceByCustomer'));
+
+if (isModEnabled('notification')) {
+    $langs->load("mails");
+}
+$head = societe_prepare_head($object);
+
+print dol_get_fiche_head($head, 'price', $langs->trans("ThirdParty"), -1, 'company');
+
+$linkback = '<a href="'.DOL_URL_ROOT.'/societe/list.php?restore_lastsearch_values=1">'.$langs->trans("BackToList").'</a>';
+
+dol_banner_tab($object, 'socid', $linkback, ($user->socid ? 0 : 1), 'rowid', 'nom');
+
+print '<div class="fichecenter">';
+
+print '<div class="underbanner clearboth"></div>';
+print '<table class="border centpercent tableforfield">';
+
+// Type Prospect/Customer/Supplier
+print '<tr><td class="titlefield">'.$langs->trans('NatureOfThirdParty').'</td><td>';
+print $object->getTypeUrl(1);
+print '</td></tr>';
+
+if (!empty($conf->global->SOCIETE_USEPREFIX)) { // Old not used prefix field
+    print '<tr><td class="titlefield">'.$langs->trans('Prefix').'</td><td colspan="3">'.$object->prefix_comm.'</td></tr>';
+}
+
+if ($object->client) {
+    print '<tr><td class="titlefield">';
+    print $langs->trans('CustomerCode').'</td><td colspan="3">';
+    print $object->code_client;
+    $tmpcheck = $object->check_codeclient();
+    if ($tmpcheck != 0 && $tmpcheck != -5) {
+        print ' <span class="error">('.$langs->trans("WrongCustomerCode").')</span>';
+    }
+    print '</td></tr>';
+}
+
+if ($object->fournisseur) {
+    print '<tr><td class="titlefield">';
+    print $langs->trans('SupplierCode').'</td><td colspan="3">';
+    print $object->code_fournisseur;
+    $tmpcheck = $object->check_codefournisseur();
+    if ($tmpcheck != 0 && $tmpcheck != -5) {
+        print ' <span class="error">('.$langs->trans("WrongSupplierCode").')</span>';
+    }
+    print '</td></tr>';
+}
+
+print '</table>';
+
+print '</div>';
+
+print dol_get_fiche_end();
+
+
+
+if (!empty($conf->global->PRODUIT_CUSTOMER_PRICES)) {
+    $prodcustprice = new Productcustomerprice($db);
+
+    $sortfield = GETPOST('sortfield', 'aZ09comma');
+    $sortorder = GETPOST('sortorder', 'aZ09comma');
+    $limit = GETPOST('limit', 'int') ?GETPOST('limit', 'int') : $conf->liste_limit;
+    $page = GETPOSTISSET('pageplusone') ? (GETPOST('pageplusone') - 1) : GETPOST("page", 'int');
+    if (empty($page) || $page == -1) {
+        $page = 0;
+    }     // If $page is not defined, or '' or -1
+    $offset = $limit * $page;
+    $pageprev = $page - 1;
+    $pagenext = $page + 1;
+    if (!$sortorder) {
+        $sortorder = "ASC";
+    }
+    if (!$sortfield) {
+        $sortfield = "soc.nom";
+    }
+
+    // Build filter to display only concerned lines
+    $filter = array(
+        't.fk_soc' => $object->id
+    );
+
+    if (!empty($search_prod)) {
+        $filter ['prod.ref'] = $search_prod;
+    }
+
+    if (!empty($search_label)) {
+        $filter ['prod.label'] = $search_label;
+    }
+
+    if (!empty($search_price)) {
+        $filter ['t.price'] = $search_price;
+    }
+
+    if (!empty($search_price_ttc)) {
+        $filter ['t.price_ttc'] = $search_price_ttc;
+    }
+
+    if ($action == 'add_customer_price') {
+        // Create mode
+
+        print '<br>';
+        print '<!-- Price by customer -->'."\n";
+
+        print load_fiche_titre($langs->trans('PriceByCustomer'));
+
+        print '<form action="'.$_SERVER["PHP_SELF"].'?socid='.$object->id.'" method="POST">';
+        print '<input type="hidden" name="token" value="'.newToken().'">';
+        print '<input type="hidden" name="action" value="add_customer_price_confirm">';
+        print '<input type="hidden" name="socid" value="'.$object->id.'">';
+        print '<table class="border centpercent">';
+        print '<tr>';
+        print '<td>'.$langs->trans('Product').'</td>';
+        print '<td>';
+        $form->select_produits('', 'prodid', '', 0);
+        print '</td>';
+        print '</tr>';
+
+        // Ref. Customer
+        print '<tr><td>'.$langs->trans('RefCustomer').'</td>';
+        print '<td><input name="ref_customer" size="12"></td></tr>';
+
+        // VAT
+        print '<tr><td>'.$langs->trans("VATRate").'</td><td>';
+        print $form->load_tva("tva_tx", $object->tva_tx, $mysoc, '', $object->id, $object->tva_npr, '', false, 1);
+        print '</td></tr>';
+
+        // Price base
+        print '<tr><td width="15%">';
+        print $langs->trans('PriceBase');
+        print '</td>';
+        print '<td>';
+        print $form->selectPriceBaseType($object->price_base_type, "price_base_type");
+        print '</td>';
+        print '</tr>';
+
+        // Price
+        print '<tr><td width="20%">';
+        $text = $langs->trans('SellingPrice');
+        print $form->textwithpicto($text, $langs->trans("PrecisionUnitIsLimitedToXDecimals", $conf->global->MAIN_MAX_DECIMALS_UNIT), 1, 1);
+        print '</td><td>';
+        print '<input name="price" size="10" value="'.GETPOST('price', 'int').'">';
+        print '</td></tr>';
+
+        // Price minimum
+        print '<tr><td>';
+        $text = $langs->trans('MinPrice');
+        print $form->textwithpicto($text, $langs->trans("PrecisionUnitIsLimitedToXDecimals", $conf->global->MAIN_MAX_DECIMALS_UNIT), 1, 1);
+        print '<td><input name="price_min" size="10" value="'.GETPOST('price_min', 'int').'">';
+        print '</td></tr>';
+
+        // Update all child soc
+        print '<tr><td width="15%">';
+        print $langs->trans('ForceUpdateChildPriceSoc');
+        print '</td>';
+        print '<td>';
+        print '<input type="checkbox" name="updatechildprice" value="1"/>';
+        print '</td>';
+        print '</tr>';
+
+        print '</table>';
+
+        print $form->buttonsSaveCancel();
+
+        print '</form>';
+    } elseif ($action == 'edit_customer_price') {
+        // Edit mode
+
+        print load_fiche_titre($langs->trans('PriceByCustomer'));
+
+        $result = $prodcustprice->fetch(GETPOST('lineid', 'int'));
+
+        if ($result <= 0) {
+            setEventMessages($prodcustprice->error, $prodcustprice->errors, 'errors');
+        } else {
+            print '<form action="'.$_SERVER["PHP_SELF"].'?socid='.$object->id.'" method="POST">';
+            print '<input type="hidden" name="token" value="'.newToken().'">';
+            print '<input type="hidden" name="action" value="update_customer_price_confirm">';
+            print '<input type="hidden" name="lineid" value="'.$prodcustprice->id.'">';
+            print '<table class="border centpercent">';
+            print '<tr>';
+            print '<td>'.$langs->trans('Product').'</td>';
+            $staticprod = new Product($db);
+            $staticprod->fetch($prodcustprice->fk_product);
+            print "<td>".$staticprod->getNomUrl(1)."</td>";
+            print '</tr>';
+
+            // Ref. Customer
+            print '<tr><td>'.$langs->trans('RefCustomer').'</td>';
+            print '<td><input name="ref_customer" size="12" value="'.dol_escape_htmltag($prodcustprice->ref_customer).'"></td></tr>';
+
+            // VAT
+            print '<tr><td>'.$langs->trans("VATRate").'</td><td>';
+            print $form->load_tva("tva_tx", $prodcustprice->tva_tx, $mysoc, '', $staticprod->id, $prodcustprice->recuperableonly);
+            print '</td></tr>';
+
+            // Price base
+            print '<tr><td width="15%">';
+            print $langs->trans('PriceBase');
+            print '</td>';
+            print '<td>';
+            print $form->selectPriceBaseType($prodcustprice->price_base_type, "price_base_type");
+            print '</td>';
+            print '</tr>';
+
+            // Price
+            print '<tr><td>';
+            $text = $langs->trans('SellingPrice');
+            print $form->textwithpicto($text, $langs->trans("PrecisionUnitIsLimitedToXDecimals", $conf->global->MAIN_MAX_DECIMALS_UNIT), 1, 1);
+            print '</td><td>';
+            if ($prodcustprice->price_base_type == 'TTC') {
+                print '<input name="price" size="10" value="'.price($prodcustprice->price_ttc).'">';
+            } else {
+                print '<input name="price" size="10" value="'.price($prodcustprice->price).'">';
+            }
+            print '</td></tr>';
+
+            // Price minimum
+            print '<tr><td>';
+            $text = $langs->trans('MinPrice');
+            print $form->textwithpicto($text, $langs->trans("PrecisionUnitIsLimitedToXDecimals", $conf->global->MAIN_MAX_DECIMALS_UNIT), 1, 1);
+            print '</td><td>';
+            if ($prodcustprice->price_base_type == 'TTC') {
+                print '<input name="price_min" size="10" value="'.price($prodcustprice->price_min_ttc).'">';
+            } else {
+                print '<input name="price_min" size="10" value="'.price($prodcustprice->price_min).'">';
+            }
+            print '</td></tr>';
+
+            // Update all child soc
+            print '<tr><td>';
+            print $langs->trans('ForceUpdateChildPriceSoc');
+            print '</td>';
+            print '<td>';
+            print '<input type="checkbox" name="updatechildprice" value="1">';
+            print '</td>';
+            print '</tr>';
+
+            print '</table>';
+
+            print $form->buttonsSaveCancel();
+
+            print '</form>';
+        }
+    } elseif ($action == 'showlog_customer_price') {
+        print '<br>';
+        print '<!-- showlog_customer_price -->'."\n";
+
+        $filter = array(
+            't.fk_product' => GETPOST('prodid', 'int'),
+            't.fk_soc' => $socid
+        );
+
+        // Count total nb of records
+        $nbtotalofrecords = '';
+        $result = $prodcustprice->fetch_all_log($sortorder, $sortfield, $conf->liste_limit, $offset, $filter);
+        if ($result < 0) {
+            setEventMessages($prodcustprice->error, $prodcustprice->errors, 'errors');
+        } else {
+            if (empty($conf->global->MAIN_DISABLE_FULL_SCANLIST)) {
+                $nbtotalofrecords = $result;
+            }
+        }
+
+        $option = '&socid='.GETPOST('socid', 'int').'&prodid='.GETPOST('prodid', 'int');
+
+        print_barre_liste($langs->trans('PriceByCustomerLog'), $page, $_SERVER ['PHP_SELF'], $option, $sortfield, $sortorder, '', count($prodcustprice->lines), $nbtotalofrecords);
+
+        if (count($prodcustprice->lines) > 0) {
+            print '<form action="'.$_SERVER["PHP_SELF"].'?id='.$object->id.'" method="POST">';
+            print '<input type="hidden" name="token" value="'.newToken().'">';
+            print '<input type="hidden" name="id" value="'.$object->id.'">';
+
+            print '<table class="noborder centpercent">';
+
+            print '<tr class="liste_titre">';
+            print '<td>'.$langs->trans("Product").'</td>';
+            print '<td>'.$langs->trans('RefCustomer').'</td>';
+            print '<td>'.$langs->trans("AppliedPricesFrom").'</td>';
+            print '<td class="center">'.$langs->trans("PriceBase").'</td>';
+            print '<td class="right">'.$langs->trans("VAT").'</td>';
+            print '<td class="right">'.$langs->trans("HT").'</td>';
+            print '<td class="right">'.$langs->trans("TTC").'</td>';
+            print '<td class="right">'.$langs->trans("MinPrice").' '.$langs->trans("HT").'</td>';
+            print '<td class="right">'.$langs->trans("MinPrice").' '.$langs->trans("TTC").'</td>';
+            print '<td class="right">'.$langs->trans("ChangedBy").'</td>';
+            print '<td></td>';
+            print '</tr>';
+
+            foreach ($prodcustprice->lines as $line) {
+                $staticprod = new Product($db);
+                $staticprod->fetch($line->fk_product);
+
+                $userstatic = new User($db);
+                $userstatic->fetch($line->fk_user);
+
+                print '<tr class="oddeven">';
+
+                print "<td>".$staticprod->getNomUrl(1)."</td>";
+                print '<td>'.$line->ref_customer.'</td>';
+                print "<td>".dol_print_date($line->datec, "dayhour")."</td>";
+
+                print '<td class="center">'.$langs->trans($line->price_base_type)."</td>";
+                print '<td class="right">'.vatrate($line->tva_tx, true, $line->recuperableonly)."</td>";
+                print '<td class="right">'.price($line->price)."</td>";
+                print '<td class="right">'.price($line->price_ttc)."</td>";
+                print '<td class="right">'.price($line->price_min).'</td>';
+                print '<td class="right">'.price($line->price_min_ttc).'</td>';
+
+                // User
+                print '<td class="right">';
+                print $userstatic->getNomUrl(-1);
+                print '</td>';
+                print '<td></td>';
+            }
+            print "</table>";
+        } else {
+            print $langs->trans('None');
+        }
+
+        print "\n".'<div class="tabsAction">'."\n";
+        print '<div class="inline-block divButAction"><a class="butAction" href="'.$_SERVER["PHP_SELF"].'?socid='.$object->id.'">'.$langs->trans("Ok").'</a></div>';
+        print "\n</div><br>\n";
+    } else {
+        // View mode
+
+        /*
+         * Action bar
+         */
+        print "\n".'<div class="tabsAction">'."\n";
+
+        if ($user->rights->produit->creer || $user->rights->service->creer) {
+            print '<div class="inline-block divButAction"><a class="butAction" href="'.$_SERVER["PHP_SELF"].'?action=add_customer_price&token='.newToken().'&socid='.$object->id.'">'.$langs->trans("AddCustomerPrice").'</a></div>';
+        }
+        print "\n</div>\n";
+
+
+        // Count total nb of records
+        $nbtotalofrecords = '';
+        if (empty($conf->global->MAIN_DISABLE_FULL_SCANLIST)) {
+            $nbtotalofrecords = $prodcustprice->fetchAll('', '', 0, 0, $filter);
+        }
+
+        $result = $prodcustprice->fetchAll($sortorder, $sortfield, $conf->liste_limit, $offset, $filter);
+        if ($result < 0) {
+            setEventMessages($prodcustprice->error, $prodcustprice->errors, 'errors');
+        }
+
+        $option = '&search_prod='.$search_prod.'&id='.$object->id.'&label='.$search_label.'&price='.$search_price.'&price_ttc='.$search_price_ttc;
+
+        print '<!-- view specific price for each product -->'."\n";
+
+        print_barre_liste($langs->trans('PriceForEachProduct'), $page, $_SERVER['PHP_SELF'], $option, $sortfield, $sortorder, '', count($prodcustprice->lines), $nbtotalofrecords, '');
+
+        print '<form action="'.$_SERVER["PHP_SELF"].'?id='.$object->id.'" method="POST">';
+        print '<input type="hidden" name="token" value="'.newToken().'">';
+        print '<input type="hidden" name="id" value="'.$object->id.'">';
+
+        print '<div class="div-table-responsive-no-min">';
+        print '<table class="noborder centpercent">';
+
+        print '<tr class="liste_titre">';
+        print '<td>'.$langs->trans("Ref").'</td>';
+        print '<td>'.$langs->trans("Product").'</td>';
+        print '<td>'.$langs->trans('RefCustomer').'</td>';
+        print '<td>'.$langs->trans("AppliedPricesFrom").'</td>';
+        print '<td class="center">'.$langs->trans("PriceBase").'</td>';
+        print '<td class="right">'.$langs->trans("VAT").'</td>';
+        print '<td class="right">'.$langs->trans("HT").'</td>';
+        print '<td class="right">'.$langs->trans("TTC").'</td>';
+        print '<td class="right">'.$langs->trans("MinPrice").' '.$langs->trans("HT").'</td>';
+        print '<td class="right">'.$langs->trans("MinPrice").' '.$langs->trans("TTC").'</td>';
+        print '<td class="right">'.$langs->trans("ChangedBy").'</td>';
+        print '<td></td>';
+        print '</tr>';
+
+        if (count($prodcustprice->lines) > 0 || $search_prod) {
+            print '<tr class="liste_titre">';
+            print '<td class="liste_titre"><input type="text" class="flat width75" name="search_prod" value="'.$search_prod.'"></td>';
+            print '<td class="liste_titre" ><input type="text" class="flat width75" name="search_label" value="'.$search_label.'"></td>';
+            print '<td class="liste_titre"></td>';
+            print '<td class="liste_titre"></td>';
+            print '<td class="liste_titre"></td>';
+            print '<td class="liste_titre"></td>';
+            print '<td class="liste_titre right"><input type="text" class="flat width75 right" name="search_price" value="'.$search_price.'"></td>';
+            print '<td class="liste_titre right"><input type="text" class="flat width75 right" name="search_price_ttc" value="'.$search_price_ttc.'"></td>';
+            print '<td class="liste_titre"></td>';
+            print '<td class="liste_titre"></td>';
+            print '<td class="liste_titre"></td>';
+            // Print the search button
+            print '<td class="liste_titre maxwidthsearch">';
+            $searchpicto = $form->showFilterAndCheckAddButtons(0);
+            print $searchpicto;
+            print '</td>';
+            print '</tr>';
+        }
+
+        if (count($prodcustprice->lines) > 0) {
+            foreach ($prodcustprice->lines as $line) {
+                $staticprod = new Product($db);
+                $staticprod->fetch($line->fk_product);
+
+                $userstatic = new User($db);
+                $userstatic->fetch($line->fk_user);
+
+                print '<tr class="oddeven">';
+
+                print "<td>".$staticprod->getNomUrl(1)."</td>";
+                print "<td>".$staticprod->label."</td>";
+                print '<td>'.$line->ref_customer.'</td>';
+                print "<td>".dol_print_date($line->datec, "dayhour")."</td>";
+                print '<td class="center">'.$langs->trans($line->price_base_type)."</td>";
+                print '<td class="right">'.vatrate($line->tva_tx.($line->default_vat_code ? ' ('.$line->default_vat_code.')' : ''), true, $line->recuperableonly)."</td>";
+                print '<td class="right">'.price($line->price)."</td>";
+                print '<td class="right">'.price($line->price_ttc)."</td>";
+                print '<td class="right">'.price($line->price_min).'</td>';
+                print '<td class="right">'.price($line->price_min_ttc).'</td>';
+                // User
+                print '<td class="right">';
+                print $userstatic->getNomUrl(-1);
+                print '</td>';
+                // Action
+                if ($user->rights->produit->creer || $user->rights->service->creer) {
+                    print '<td class="right nowraponall">';
+                    print '<a class="paddingleftonly paddingrightonly" href="'.$_SERVER["PHP_SELF"].'?action=showlog_customer_price&token='.newToken().'&socid='.$object->id.'&prodid='.$line->fk_product.'">';
+                    print img_info();
+                    print '</a>';
+                    print ' ';
+                    print '<a class="editfielda paddingleftonly paddingrightonly" href="'.$_SERVER["PHP_SELF"].'?action=edit_customer_price&token='.newToken().'&socid='.$object->id.'&lineid='.$line->id.'">';
+                    print img_edit('default', 0, 'style="vertical-align: middle;"');
+                    print '</a>';
+                    print ' ';
+                    print '<a class="paddingleftonly paddingrightonly" href="'.$_SERVER["PHP_SELF"].'?action=delete_customer_price&token='.newToken().'&socid='.$object->id.'&lineid='.$line->id.'">';
+                    print img_delete('default', 'style="vertical-align: middle;"');
+                    print '</a>';
+                    print '</td>';
+                }
+
+                print "</tr>\n";
+            }
+        } else {
+            $colspan = 10;
+            if ($user->rights->produit->supprimer || $user->rights->service->supprimer) {
+                $colspan += 1;
+            }
+            print '<tr class="oddeven"><td colspan="'.$colspan.'">'.$langs->trans('None').'</td></tr>';
+        }
+
+        print "</table>";
+        print '</div>';
+
+        print "</form>";
+    }
+}
+
+// End of page
+llxFooter();
+$db->close();

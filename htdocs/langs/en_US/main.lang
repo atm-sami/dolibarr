@@ -100,6 +100,7 @@ HomePage=Home Page
 RecordSaved=Record saved
 RecordDeleted=Record deleted
 RecordGenerated=Record generated
+ValidatedRecordWhereFound = Some of the selected records have already been validated. No records have been deleted.
 LevelOfFeature=Level of features
 NotDefined=Not defined
 DolibarrInHttpAuthenticationSoPasswordUseless=Dolibarr authentication mode is set to <b>%s</b> in configuration file <b>conf.php</b>.<br>This means that the password database is external to Dolibarr, so changing this field may have no effect.

@@ -417,7 +417,7 @@ if (empty($reshook)) {
 		if (!$error) {
 			foreach ($toselect as $toselectid) {
 				$result = $object->fetch($toselectid);
-                if ($result > 0 && (!isset($object->date_validation) || $object->date_validation === '')) {
+                if ($result > 0 && (!isset($object->date_validation) || $object->date_validation === '')) {			//PR en attente de merge dans la branche develop standard de Dolibarr
 					$result = $object->deleteMvtNum($object->piece_num);
 					if ($result > 0) {
 						$nbok++;

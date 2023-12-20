@@ -473,6 +473,13 @@ class modAgenda extends DolibarrModules
 			's.tva_intra' => 'VATIntra',
 			'p.ref' => 'ProjectRef',
 		];
+		// Add multicompany field
+		if (!empty($conf->global->MULTICOMPANY_ENTITY_IN_EXPORT_IF_SHARED)) {
+			$nbofallowedentities = count(explode(',', getEntity('agenda')));
+			if (isModEnabled('multicompany') && $nbofallowedentities > 1) {
+				$this->export_fields_array[$r]['ac.entity'] = 'Entity';
+			}
+		}
 		$this->export_TypeFields_array[$r] = [
 			'ac.ref_ext' => "Text",
 			'ac.ref' => "Text",
@@ -509,6 +516,7 @@ class modAgenda extends DolibarrModules
 			's.code_compta_fournisseur' => 'Text',
 			's.tva_intra' => 'Text',
 			'p.ref' => 'Text',
+			'ac.entity'=>'List:entity:label:rowid'
 		];
 		$this->export_entities_array[$r] = [
 			'ac.id' => "action",
@@ -573,6 +581,7 @@ class modAgenda extends DolibarrModules
 		if (!empty($user) && !$user->hasRight('agenda', 'allactions', 'read')) {
 			$this->export_sql_end[$r] .= ' AND acr.fk_element = '.(empty($user) ? 0 : $user->id);
 		}
+		$this->export_sql_end[$r] .= ' AND ac.entity IN ('.getEntity('agenda').')';
 		$this->export_sql_order[$r] = ' ORDER BY ac.datep';
 		// Imports
 		$r = 0;

@@ -1241,3 +1241,5 @@ DateOfPrinting=Date of printing
 ClickFullScreenEscapeToLeave=Click here to switch in Full screen mode. Press ESCAPE to leave Full screen mode.
 UserNotYetValid=Not yet valid
 UserExpired=Expired
+ElementType = Element type
+ElementId = Element Id

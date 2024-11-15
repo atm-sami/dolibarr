@@ -2054,7 +2054,8 @@ class FormMail extends Form
 	 *      @param	User		$user				Use template public or limited to this user
 	 *      @return	array		                    	Return array of types found
 	 */
-	function getAllTemplateTypes($user) {
+	public function getAllTemplateTypes($user) 
+	{
 		$templateTypes = [];
 
 		// Always available types
@@ -2523,7 +2524,7 @@ class ModelMail extends CommonObject
 		$sql = "INSERT INTO " . $this->db->prefix() . "c_email_templates (";
 		$sql .= "entity, label, type_template, module, topic, content, content_lines, lang, fk_user, private, position, email_from, email_to, email_tocc, email_tobcc";
 		$sql .= ") VALUES (";
-		$sql .= "'" . (int)$conf->entity . "', ";
+		$sql .= "'" . (int) $conf->entity . "', ";
 		$sql .= "'" . $this->db->escape($this->label) . "', ";
 		$sql .= "'" . $this->db->escape($this->type_template) . "', ";
 		$sql .= ($this->module ? "'" . $this->db->escape($this->module) . "'" : "NULL") . ", ";
@@ -2532,7 +2533,7 @@ class ModelMail extends CommonObject
 		$sql .= ($this->content_lines ? "'" . $this->db->escape($this->content_lines) . "'" : "NULL") . ", ";
 		$sql .= ($this->lang ? "'" . $this->db->escape($this->lang) . "'" : "NULL") . ", ";
 		$sql .= ($this->fk_user ?? 'NULL') . ", ";
-		$sql .= ((int)$this->private) . ", ";
+		$sql .= ((int) $this->private) . ", ";
 		$sql .= ($this->position ?? 'NULL') . ", ";
 		$sql .= ($this->email_from ? "'" . $this->db->escape($this->email_from) . "'" : "NULL") . ", ";
 		$sql .= ($this->email_to ? "'" . $this->db->escape($this->email_to) . "'" : "NULL") . ", ";

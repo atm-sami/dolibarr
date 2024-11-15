@@ -186,69 +186,86 @@ $tabhelp[25] = array(
 
 
 // We save list of template email Dolibarr can manage. This list can found by a grep into code on "->param['models']"
-$elementList = array();
-// Add all and none after the sort
+$elementList = [];
+$templateTypes = $formmail->getAllTemplateTypes($user); // Retrieve all template types for the current user.
 
-$elementList['all'] = '-- '.dol_escape_htmltag($langs->trans("All")).' --';
-$elementList['none'] = '-- '.dol_escape_htmltag($langs->trans("None")).' --';
-$elementList['user'] = img_picto('', 'user', 'class="pictofixedwidth"').dol_escape_htmltag($langs->trans('MailToUser'));
-if (isModEnabled('adherent') && $user->hasRight('adherent', 'lire')) {
-	$elementList['member'] = img_picto('', 'object_member', 'class="pictofixedwidth"').dol_escape_htmltag($langs->trans('MailToMember'));
+foreach ($templateTypes as $type) {
+	switch ($type) {
+		case 'all':
+			$elementList['all'] = '-- ' . dol_escape_htmltag($langs->trans("All")) . ' --';
+			break;
+		case 'none':
+			$elementList['none'] = '-- ' . dol_escape_htmltag($langs->trans("None")) . ' --';
+			break;
+		case 'user':
+			$elementList['user'] = img_picto('', 'user', 'class="pictofixedwidth"') . dol_escape_htmltag($langs->trans('MailToUser'));
+			break;
+		case 'member':
+			$elementList['member'] = img_picto('', 'object_member', 'class="pictofixedwidth"') . dol_escape_htmltag($langs->trans('MailToMember'));
+			break;
+		case 'recruitmentcandidature_send':
+			$elementList['recruitmentcandidature_send'] = img_picto('', 'recruitmentcandidature', 'class="pictofixedwidth"') . dol_escape_htmltag($langs->trans('RecruitmentCandidatures'));
+			break;
+		case 'thirdparty':
+			$elementList['thirdparty'] = img_picto('', 'company', 'class="pictofixedwidth"') . dol_escape_htmltag($langs->trans('MailToThirdparty'));
+			break;
+		case 'contact':
+			$elementList['contact'] = img_picto('', 'contact', 'class="pictofixedwidth"') . dol_escape_htmltag($langs->trans('MailToContact'));
+			break;
+		case 'project':
+			$elementList['project'] = img_picto('', 'project', 'class="pictofixedwidth"') . dol_escape_htmltag($langs->trans('MailToProject'));
+			break;
+		case 'propal_send':
+			$elementList['propal_send'] = img_picto('', 'propal', 'class="pictofixedwidth"') . dol_escape_htmltag($langs->trans('MailToSendProposal'));
+			break;
+		case 'order_send':
+			$elementList['order_send'] = img_picto('', 'order', 'class="pictofixedwidth"') . dol_escape_htmltag($langs->trans('MailToSendOrder'));
+			break;
+		case 'facture_send':
+			$elementList['facture_send'] = img_picto('', 'bill', 'class="pictofixedwidth"') . dol_escape_htmltag($langs->trans('MailToSendInvoice'));
+			break;
+		case 'shipping_send':
+			$elementList['shipping_send'] = img_picto('', 'dolly', 'class="pictofixedwidth"') . dol_escape_htmltag($langs->trans('MailToSendShipment'));
+			break;
+		case 'reception_send':
+			$elementList['reception_send'] = img_picto('', 'dollyrevert', 'class="pictofixedwidth"') . dol_escape_htmltag($langs->trans('MailToSendReception'));
+			break;
+		case 'fichinter_send':
+			$elementList['fichinter_send'] = img_picto('', 'intervention', 'class="pictofixedwidth"') . dol_escape_htmltag($langs->trans('MailToSendIntervention'));
+			break;
+		case 'supplier_proposal_send':
+			$elementList['supplier_proposal_send'] = img_picto('', 'propal', 'class="pictofixedwidth"') . dol_escape_htmltag($langs->trans('MailToSendSupplierRequestForQuotation'));
+			break;
+		case 'order_supplier_send':
+			$elementList['order_supplier_send'] = img_picto('', 'order', 'class="pictofixedwidth"') . dol_escape_htmltag($langs->trans('MailToSendSupplierOrder'));
+			break;
+		case 'invoice_supplier_send':
+			$elementList['invoice_supplier_send'] = img_picto('', 'bill', 'class="pictofixedwidth"') . dol_escape_htmltag($langs->trans('MailToSendSupplierInvoice'));
+			break;
+		case 'contract':
+			$elementList['contract'] = img_picto('', 'contract', 'class="pictofixedwidth"') . dol_escape_htmltag($langs->trans('MailToSendContract'));
+			break;
+		case 'ticket_send':
+			$elementList['ticket_send'] = img_picto('', 'ticket', 'class="pictofixedwidth"') . dol_escape_htmltag($langs->trans('MailToTicket'));
+			break;
+		case 'expensereport_send':
+			$elementList['expensereport_send'] = img_picto('', 'trip', 'class="pictofixedwidth"') . dol_escape_htmltag($langs->trans('MailToExpenseReport'));
+			break;
+		case 'actioncomm_send':
+			$elementList['actioncomm_send'] = img_picto('', 'action', 'class="pictofixedwidth"') . dol_escape_htmltag($langs->trans('MailToSendEventPush'));
+			break;
+		case 'conferenceorbooth':
+			$elementList['conferenceorbooth'] = img_picto('', 'action', 'class="pictofixedwidth"') . dol_escape_htmltag($langs->trans('MailToSendEventOrganization'));
+			break;
+		case 'partnership_send':
+			$elementList['partnership_send'] = img_picto('', 'partnership', 'class="pictofixedwidth"') . dol_escape_htmltag($langs->trans('MailToPartnership'));
+			break;
+		default:
+			// Ignore unknown types
+			break;
+	}
 }
-if (isModEnabled('recruitment') && $user->hasRight('recruitment', 'recruitmentjobposition', 'read')) {
-	$elementList['recruitmentcandidature_send'] = img_picto('', 'recruitmentcandidature', 'class="pictofixedwidth"').dol_escape_htmltag($langs->trans('RecruitmentCandidatures'));
-}
-if (isModEnabled("societe") && $user->hasRight('societe', 'lire')) {
-	$elementList['thirdparty'] = img_picto('', 'company', 'class="pictofixedwidth"').dol_escape_htmltag($langs->trans('MailToThirdparty'));
-}
-if (isModEnabled('project')) {
-	$elementList['project'] = img_picto('', 'project', 'class="pictofixedwidth"').dol_escape_htmltag($langs->trans('MailToProject'));
-}
-if (isModEnabled("propal") && $user->hasRight('propal', 'lire')) {
-	$elementList['propal_send'] = img_picto('', 'propal', 'class="pictofixedwidth"').dol_escape_htmltag($langs->trans('MailToSendProposal'));
-}
-if (isModEnabled('commande') && $user->hasRight('commande', 'lire')) {
-	$elementList['order_send'] = img_picto('', 'order', 'class="pictofixedwidth"').dol_escape_htmltag($langs->trans('MailToSendOrder'));
-}
-if (isModEnabled('facture') && $user->hasRight('facture', 'lire')) {
-	$elementList['facture_send'] = img_picto('', 'bill', 'class="pictofixedwidth"').dol_escape_htmltag($langs->trans('MailToSendInvoice'));
-}
-if (isModEnabled("expedition")) {
-	$elementList['shipping_send'] = img_picto('', 'dolly', 'class="pictofixedwidth"').dol_escape_htmltag($langs->trans('MailToSendShipment'));
-}
-if (isModEnabled("reception")) {
-	$elementList['reception_send'] = img_picto('', 'dollyrevert', 'class="pictofixedwidth"').dol_escape_htmltag($langs->trans('MailToSendReception'));
-}
-if (isModEnabled('ficheinter')) {
-	$elementList['fichinter_send'] = img_picto('', 'intervention', 'class="pictofixedwidth"').dol_escape_htmltag($langs->trans('MailToSendIntervention'));
-}
-if (isModEnabled('supplier_proposal')) {
-	$elementList['supplier_proposal_send'] = img_picto('', 'propal', 'class="pictofixedwidth"').dol_escape_htmltag($langs->trans('MailToSendSupplierRequestForQuotation'));
-}
-if (isModEnabled("supplier_order") && ($user->hasRight('fournisseur', 'commande', 'lire') || $user->hasRight('supplier_order', 'read'))) {
-	$elementList['order_supplier_send'] = img_picto('', 'order', 'class="pictofixedwidth"').dol_escape_htmltag($langs->trans('MailToSendSupplierOrder'));
-}
-if (isModEnabled("supplier_invoice") && ($user->hasRight('fournisseur', 'facture', 'lire') || $user->hasRight('supplier_invoice', 'read'))) {
-	$elementList['invoice_supplier_send'] = img_picto('', 'bill', 'class="pictofixedwidth"').dol_escape_htmltag($langs->trans('MailToSendSupplierInvoice'));
-}
-if (isModEnabled('contrat') && $user->hasRight('contrat', 'lire')) {
-	$elementList['contract'] = img_picto('', 'contract', 'class="pictofixedwidth"').dol_escape_htmltag($langs->trans('MailToSendContract'));
-}
-if (isModEnabled('ticket') && $user->hasRight('ticket', 'read')) {
-	$elementList['ticket_send'] = img_picto('', 'ticket', 'class="pictofixedwidth"').dol_escape_htmltag($langs->trans('MailToTicket'));
-}
-if (isModEnabled('expensereport') && $user->hasRight('expensereport', 'lire')) {
-	$elementList['expensereport_send'] = img_picto('', 'trip', 'class="pictofixedwidth"').dol_escape_htmltag($langs->trans('MailToExpenseReport'));
-}
-if (isModEnabled('agenda')) {
-	$elementList['actioncomm_send'] = img_picto('', 'action', 'class="pictofixedwidth"').dol_escape_htmltag($langs->trans('MailToSendEventPush'));
-}
-if (isModEnabled('eventorganization') && $user->hasRight('eventorganization', 'read')) {
-	$elementList['conferenceorbooth'] = img_picto('', 'action', 'class="pictofixedwidth"').dol_escape_htmltag($langs->trans('MailToSendEventOrganization'));
-}
-if (isModEnabled('partnership') && $user->hasRight('partnership', 'read')) {
-	$elementList['partnership_send'] = img_picto('', 'partnership', 'class="pictofixedwidth"').dol_escape_htmltag($langs->trans('MailToPartnership'));
-}
+
 
 $parameters = array('elementList' => $elementList);
 $reshook = $hookmanager->executeHooks('emailElementlist', $parameters); // Note that $action and $object may have been modified by some hooks

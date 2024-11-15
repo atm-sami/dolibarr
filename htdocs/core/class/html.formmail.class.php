@@ -2062,7 +2062,7 @@ class FormMail extends Form
 		$templateTypes[] = 'none';
 		$templateTypes[] = 'user';
 
-		if (isModEnabled('adherent') && $user->hasRight('adherent', 'lire')) {
+		if (isModEnabled('member') && $user->hasRight('adherent', 'lire')) {
 			$templateTypes[] = 'member';
 		}
 		if (isModEnabled('recruitment') && $user->hasRight('recruitment', 'recruitmentjobposition', 'read')) {
@@ -2071,25 +2071,28 @@ class FormMail extends Form
 		if (isModEnabled("societe") && $user->hasRight('societe', 'lire')) {
 			$templateTypes[] = 'thirdparty';
 		}
+		if (isModEnabled("societe") && $user->hasRight('societe', 'contact', 'lire')) {
+			$templateTypes[] = 'contact';
+		}
 		if (isModEnabled('project')) {
 			$templateTypes[] = 'project';
 		}
 		if (isModEnabled("propal") && $user->hasRight('propal', 'lire')) {
 			$templateTypes[] = 'propal_send';
 		}
-		if (isModEnabled('commande') && $user->hasRight('commande', 'lire')) {
+		if (isModEnabled('order') && $user->hasRight('commande', 'lire')) {
 			$templateTypes[] = 'order_send';
 		}
-		if (isModEnabled('facture') && $user->hasRight('facture', 'lire')) {
+		if (isModEnabled('invoice') && $user->hasRight('facture', 'lire')) {
 			$templateTypes[] = 'facture_send';
 		}
-		if (isModEnabled("expedition")) {
+		if (isModEnabled("shipping")) {
 			$templateTypes[] = 'shipping_send';
 		}
 		if (isModEnabled("reception")) {
 			$templateTypes[] = 'reception_send';
 		}
-		if (isModEnabled('ficheinter')) {
+		if (isModEnabled('intervention')) {
 			$templateTypes[] = 'fichinter_send';
 		}
 		if (isModEnabled('supplier_proposal')) {
@@ -2101,7 +2104,7 @@ class FormMail extends Form
 		if (isModEnabled("supplier_invoice") && ($user->hasRight('fournisseur', 'facture', 'lire') || $user->hasRight('supplier_invoice', 'read'))) {
 			$templateTypes[] = 'invoice_supplier_send';
 		}
-		if (isModEnabled('contrat') && $user->hasRight('contrat', 'lire')) {
+		if (isModEnabled('contract') && $user->hasRight('contrat', 'lire')) {
 			$templateTypes[] = 'contract';
 		}
 		if (isModEnabled('ticket') && $user->hasRight('ticket', 'read')) {

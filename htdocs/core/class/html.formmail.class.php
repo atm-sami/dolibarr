@@ -2052,7 +2052,7 @@ class FormMail extends Form
 	 *      Get all different template types for current user
 	 *
 	 *      @param	User		$user				Use template public or limited to this user
-	 *      @return	array		                    	Return array of types fond
+	 *      @return	array		                    	Return array of types found
 	 */
 	function getAllTemplateTypes($user) {
 		$templateTypes = [];
@@ -2450,10 +2450,6 @@ class ModelMail extends CommonObject
 	 * @var int Position of template in a combo list
 	 */
 	public $position;
-
-	public $errors = array();
-	public $error;
-
 
 	/**
 	 * Constructor

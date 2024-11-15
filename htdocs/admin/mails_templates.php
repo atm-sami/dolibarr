@@ -266,7 +266,6 @@ foreach ($templateTypes as $type) {
 	}
 }
 
-
 $parameters = array('elementList' => $elementList);
 $reshook = $hookmanager->executeHooks('emailElementlist', $parameters); // Note that $action and $object may have been modified by some hooks
 if ($reshook == 0) {

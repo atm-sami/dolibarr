@@ -2127,8 +2127,6 @@ class FormMail extends Form
 	}
 
 
-
-
 	/**
 	 * Set ->substit (and ->substit_line) array from object. This is call when suggesting the email template into forms before sending email.
 	 *
@@ -2502,10 +2500,10 @@ class ModelMail extends CommonObject
 	 * Create a new email template.
 	 *
 	 * @param User $user The user creating the template.
-	 * @param int  $notrigger  0=launch triggers after, 1=disable triggers
+	 * @param int $notrigger 0=launch triggers after, 1=disable triggers
 	 * @return int|bool The ID of the created template if successful, false if there was an error.
 	 */
-	public function create($user, $notrigger=0)
+	public function create($user, $notrigger = 0)
 	{
 		global $conf, $langs;
 
@@ -2525,7 +2523,7 @@ class ModelMail extends CommonObject
 		$sql = "INSERT INTO " . $this->db->prefix() . "c_email_templates (";
 		$sql .= "entity, label, type_template, module, topic, content, content_lines, lang, fk_user, private, position, email_from, email_to, email_tocc, email_tobcc";
 		$sql .= ") VALUES (";
-		$sql .= "'" . (int) $conf->entity . "', ";
+		$sql .= "'" . (int)$conf->entity . "', ";
 		$sql .= "'" . $this->db->escape($this->label) . "', ";
 		$sql .= "'" . $this->db->escape($this->type_template) . "', ";
 		$sql .= ($this->module ? "'" . $this->db->escape($this->module) . "'" : "NULL") . ", ";
@@ -2534,7 +2532,7 @@ class ModelMail extends CommonObject
 		$sql .= ($this->content_lines ? "'" . $this->db->escape($this->content_lines) . "'" : "NULL") . ", ";
 		$sql .= ($this->lang ? "'" . $this->db->escape($this->lang) . "'" : "NULL") . ", ";
 		$sql .= ($this->fk_user ?? 'NULL') . ", ";
-		$sql .= ((int) $this->private) . ", ";
+		$sql .= ((int)$this->private) . ", ";
 		$sql .= ($this->position ?? 'NULL') . ", ";
 		$sql .= ($this->email_from ? "'" . $this->db->escape($this->email_from) . "'" : "NULL") . ", ";
 		$sql .= ($this->email_to ? "'" . $this->db->escape($this->email_to) . "'" : "NULL") . ", ";
@@ -2588,6 +2586,4 @@ class ModelMail extends CommonObject
 		}
 		return $result;
 	}
-
-
 }

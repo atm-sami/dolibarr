@@ -2054,7 +2054,7 @@ class FormMail extends Form
 	 *      @param	User		$user				Use template public or limited to this user
 	 *      @return	array		                    	Return array of types found
 	 */
-	public function getAllTemplateTypes($user) 
+	public function getAllTemplateTypes($user)
 	{
 		$templateTypes = [];
 

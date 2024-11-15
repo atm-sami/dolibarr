@@ -2054,7 +2054,7 @@ class FormMail extends Form
 	 *      @param	User		$user				Use template public or limited to this user
 	 *      @return	array		                    	Return array of types found
 	 */
-	public function getAllTemplateTypes($user)
+	public function getAllTemplateTypes(User $user) : array
 	{
 		$templateTypes = [];
 
@@ -2502,9 +2502,9 @@ class ModelMail extends CommonObject
 	 *
 	 * @param User $user The user creating the template.
 	 * @param int $notrigger 0=launch triggers after, 1=disable triggers
-	 * @return int|bool The ID of the created template if successful, false if there was an error.
+	 * @return int The ID of the created template if successful, < 0 if there was an error.
 	 */
-	public function create($user, $notrigger = 0)
+	public function create(User $user, int $notrigger = 0) : int
 	{
 		global $conf, $langs;
 

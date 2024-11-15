@@ -2048,6 +2048,82 @@ class FormMail extends Form
 		}
 	}
 
+	/**
+	 *      Get all different template types for current user
+	 *
+	 *      @param	User		$user				Use template public or limited to this user
+	 *      @return	array		                    	Return array of types fond
+	 */
+	function getAllTemplateTypes($user) {
+		$templateTypes = [];
+
+		// Always available types
+		$templateTypes[] = 'all';
+		$templateTypes[] = 'none';
+		$templateTypes[] = 'user';
+
+		if (isModEnabled('adherent') && $user->hasRight('adherent', 'lire')) {
+			$templateTypes[] = 'member';
+		}
+		if (isModEnabled('recruitment') && $user->hasRight('recruitment', 'recruitmentjobposition', 'read')) {
+			$templateTypes[] = 'recruitmentcandidature_send';
+		}
+		if (isModEnabled("societe") && $user->hasRight('societe', 'lire')) {
+			$templateTypes[] = 'thirdparty';
+		}
+		if (isModEnabled('project')) {
+			$templateTypes[] = 'project';
+		}
+		if (isModEnabled("propal") && $user->hasRight('propal', 'lire')) {
+			$templateTypes[] = 'propal_send';
+		}
+		if (isModEnabled('commande') && $user->hasRight('commande', 'lire')) {
+			$templateTypes[] = 'order_send';
+		}
+		if (isModEnabled('facture') && $user->hasRight('facture', 'lire')) {
+			$templateTypes[] = 'facture_send';
+		}
+		if (isModEnabled("expedition")) {
+			$templateTypes[] = 'shipping_send';
+		}
+		if (isModEnabled("reception")) {
+			$templateTypes[] = 'reception_send';
+		}
+		if (isModEnabled('ficheinter')) {
+			$templateTypes[] = 'fichinter_send';
+		}
+		if (isModEnabled('supplier_proposal')) {
+			$templateTypes[] = 'supplier_proposal_send';
+		}
+		if (isModEnabled("supplier_order") && ($user->hasRight('fournisseur', 'commande', 'lire') || $user->hasRight('supplier_order', 'read'))) {
+			$templateTypes[] = 'order_supplier_send';
+		}
+		if (isModEnabled("supplier_invoice") && ($user->hasRight('fournisseur', 'facture', 'lire') || $user->hasRight('supplier_invoice', 'read'))) {
+			$templateTypes[] = 'invoice_supplier_send';
+		}
+		if (isModEnabled('contrat') && $user->hasRight('contrat', 'lire')) {
+			$templateTypes[] = 'contract';
+		}
+		if (isModEnabled('ticket') && $user->hasRight('ticket', 'read')) {
+			$templateTypes[] = 'ticket_send';
+		}
+		if (isModEnabled('expensereport') && $user->hasRight('expensereport', 'lire')) {
+			$templateTypes[] = 'expensereport_send';
+		}
+		if (isModEnabled('agenda')) {
+			$templateTypes[] = 'actioncomm_send';
+		}
+		if (isModEnabled('eventorganization') && $user->hasRight('eventorganization', 'read')) {
+			$templateTypes[] = 'conferenceorbooth';
+		}
+		if (isModEnabled('partnership') && $user->hasRight('partnership', 'read')) {
+			$templateTypes[] = 'partnership_send';
+		}
+
+		return $templateTypes;
+	}
+
+
 
 
 	/**
@@ -2371,8 +2447,9 @@ class ModelMail extends CommonObject
 	 * @var int Position of template in a combo list
 	 */
 	public $position;
-	// END MODULEBUILDER PROPERTIES
 
+	public $errors = array();
+	public $error;
 
 
 	/**
@@ -2423,6 +2500,79 @@ class ModelMail extends CommonObject
 
 
 	/**
+	 * Create a new email template.
+	 *
+	 * @param User $user The user creating the template.
+	 * @param int  $notrigger  0=launch triggers after, 1=disable triggers
+	 * @return int|bool The ID of the created template if successful, false if there was an error.
+	 */
+	public function create($user, $notrigger=0)
+	{
+		global $conf, $langs;
+
+		// Validate required fields
+		if (empty($this->label)) {
+			$this->errors[] = $langs->trans("ErrorFieldRequired", 'label');
+			return -1;
+		}
+		if (empty($this->content)) {
+			$this->errors[] = $langs->trans("ErrorFieldRequired", 'content');
+			return -1;
+		}
+
+		$this->db->begin();
+		$error = 0;
+
+		$sql = "INSERT INTO " . $this->db->prefix() . "c_email_templates (";
+		$sql .= "entity, label, type_template, module, topic, content, content_lines, lang, fk_user, private, position, email_from, email_to, email_tocc, email_tobcc";
+		$sql .= ") VALUES (";
+		$sql .= "'" . (int) $conf->entity . "', ";
+		$sql .= "'" . $this->db->escape($this->label) . "', ";
+		$sql .= "'" . $this->db->escape($this->type_template) . "', ";
+		$sql .= ($this->module ? "'" . $this->db->escape($this->module) . "'" : "NULL") . ", ";
+		$sql .= ($this->topic ? "'" . $this->db->escape($this->topic) . "'" : "NULL") . ", ";
+		$sql .= "'" . $this->db->escape($this->content) . "', ";
+		$sql .= ($this->content_lines ? "'" . $this->db->escape($this->content_lines) . "'" : "NULL") . ", ";
+		$sql .= ($this->lang ? "'" . $this->db->escape($this->lang) . "'" : "NULL") . ", ";
+		$sql .= ($this->fk_user ?? 'NULL') . ", ";
+		$sql .= ((int) $this->private) . ", ";
+		$sql .= ($this->position ?? 'NULL') . ", ";
+		$sql .= ($this->email_from ? "'" . $this->db->escape($this->email_from) . "'" : "NULL") . ", ";
+		$sql .= ($this->email_to ? "'" . $this->db->escape($this->email_to) . "'" : "NULL") . ", ";
+		$sql .= ($this->email_tocc ? "'" . $this->db->escape($this->email_tocc) . "'" : "NULL") . ", ";
+		$sql .= ($this->email_tobcc ? "'" . $this->db->escape($this->email_tobcc) . "'" : "NULL");
+		$sql .= ")";
+
+		$resql = $this->db->query($sql);
+		if ($resql) {
+			$this->id = $this->db->last_insert_id($this->db->prefix() . "c_email_templates");
+
+			if (!$notrigger) {
+				// Call trigger
+				$result = $this->call_trigger('EMAIL_TEMPLATE_CREATE', $user);
+				if ($result < 0) {
+					$error++;
+				}
+			}
+
+			if (!$error) {
+				$this->db->commit();
+				return $this->id;
+			} else {
+				$this->db->rollback();
+				dol_syslog(__METHOD__ . ' ' . $this->error, LOG_ERR);
+				return -2;
+			}
+		} else {
+			$this->error = $this->db->lasterror();
+			dol_syslog(__METHOD__ . ' SQL Error: ' . $this->error, LOG_ERR);
+			$this->db->rollback();
+			return -1;
+		}
+	}
+
+
+	/**
 	 * Load object in memory from the database
 	 *
 	 * @param 	int    	$id   			Id object
@@ -2439,4 +2589,6 @@ class ModelMail extends CommonObject
 		}
 		return $result;
 	}
+
+
 }

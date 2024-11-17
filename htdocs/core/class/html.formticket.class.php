@@ -1367,12 +1367,10 @@ class FormTicket
 
 		print "\n<!-- Begin message_form TICKET -->\n";
 
-		// Call hook getFormMail
-		$hookmanager->initHooks(array('formmail'));
+		$hookmanager->initHooks(array('ticketform'));
 
 		$parameters = array(
 			'addfileaction' => $addfileaction,
-			'trackid'=> $this->trackid
 		);
 		$reshook = $hookmanager->executeHooks('printTicketMessageForm', $parameters, $this, $action); // Note that $action and $object may have been modified by hook
 
